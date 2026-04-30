@@ -1,4 +1,4 @@
-﻿
+
 // Core logic ported from alt_ctrl_weight.ino, adapted to ESP32-HUB75-MatrixPanel-I2S-DMA.
 // 删除了原物理按钮逻辑，改为每 3 秒自动触发“虚拟按钮”。
 

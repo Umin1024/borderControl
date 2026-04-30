@@ -12,7 +12,10 @@
 #define B_PIN_DEFAULT  8
 #define C_PIN_DEFAULT  3
 #define D_PIN_DEFAULT  42
-#define E_PIN_DEFAULT  -1 // required for 1/32 scan panels, like 64x64. Any available pin would do, i.e. IO32
+#define E_PIN_DEFAULT  17 // required for 1/32 scan panels, like 64x64. Any available pin would do, i.e. IO32
 #define LAT_PIN_DEFAULT 40
 #define OE_PIN_DEFAULT  2
 #define CLK_PIN_DEFAULT 41
+
+// #define HX711_SCK 13  // PORTA0 (esp32 S3)
+// #define HX711_DT 14   // PORTL (esp32 S3)

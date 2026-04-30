@@ -28,28 +28,35 @@ void setup() {
   dma_display->begin();
   dma_display->setBrightness8(255);
   dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextColor(dma_display->color565(255, 255, 255));
+  dma_display->setTextColor(dma_display->color565(255, 0, 0));
   dma_display->setTextSize(2);
   dma_display->setTextWrap(false);
   dma_display->setCursor(0, 0);
-  dma_display->print("welcome to the");
+  dma_display->print("welcome to the gr");
   dma_display->setCursor(0, 17);
-  dma_display->print("great nation");
+  dma_display->print("eat nation's por");
 
   delay(1000);
 }
 
 void loop() {
   unsigned long weight = Get_Weight();
+  unsigned long now = millis();
+  int countdown = 10 - ((now / 1000) % 10);
 
-  // 左下角显示，位置 0,33
+  // 左下角重量显示
   dma_display->setTextSize(1);
-  //dma_display->setTextColor(dma_display->color565(0, 255, 0), dma_display->color565(0, 0, 0));
   dma_display->fillRect(0, 33, 96, 15, dma_display->color565(0, 0, 0));
   dma_display->setCursor(1, 40);
   dma_display->print("W:");
   dma_display->print(weight);
   dma_display->print("g");
 
-  delay(1000);
+  // 右下角倒计时显示
+  dma_display->fillRect(56, 33, 40, 15, dma_display->color565(0, 0, 0));
+  dma_display->setCursor(56, 40);
+  dma_display->print(countdown);
+  dma_display->print('s');
+
+  delay(200);
 }
