@@ -7,8 +7,10 @@
 
 #define PANEL_RES_X 96    // Width of each individual panel
 #define PANEL_RES_Y 48     // Height of each individual panel
-#define PANEL_CHAIN 1      // Number of panels chained together
+#define PANEL_CHAIN 2      // Number of panels chained together
 #define PIN_E 17
+#define PIN_RED 38
+#define PIN_GREEN 39
 
 MatrixPanel_I2S_DMA *dma_display = nullptr;
 
@@ -32,9 +34,14 @@ void setup() {
   dma_display->setTextSize(2);
   dma_display->setTextWrap(false);
   dma_display->setCursor(0, 0);
-  dma_display->print("welcome to the gr");
+  dma_display->print("welcome to the");
   dma_display->setCursor(0, 17);
-  dma_display->print("eat nation's por");
+  dma_display->print("great nation");
+
+  pinMode(PIN_RED, OUTPUT);
+  pinMode(PIN_GREEN, OUTPUT);
+  digitalWrite(PIN_RED, LOW);
+  digitalWrite(PIN_GREEN, LOW);
 
   delay(1000);
 }
@@ -43,6 +50,14 @@ void loop() {
   unsigned long weight = Get_Weight();
   unsigned long now = millis();
   int countdown = 10 - ((now / 1000) % 10);
+  bool redPhase = ((now / 10000) % 2) == 0;
+  if (redPhase) {
+    digitalWrite(PIN_RED, HIGH);
+    digitalWrite(PIN_GREEN, LOW);
+  } else {
+    digitalWrite(PIN_RED, LOW);
+    digitalWrite(PIN_GREEN, HIGH);
+  }
 
   // 左下角重量显示
   dma_display->setTextSize(1);
