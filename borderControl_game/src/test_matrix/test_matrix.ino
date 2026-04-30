@@ -53,8 +53,8 @@ void loop() {
   dma_display->print("g");
 
   // 右下角倒计时显示
-  dma_display->fillRect(56, 33, 40, 15, dma_display->color565(0, 0, 0));
-  dma_display->setCursor(56, 40);
+  dma_display->fillRect(150, 33, 40, 15, dma_display->color565(0, 0, 0));
+  dma_display->setCursor(150, 40);
   dma_display->print(countdown);
   dma_display->print('s');
 

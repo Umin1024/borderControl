@@ -36,5 +36,19 @@ amaze 2026
 #define OE_PIN_DEFAULT  2
 #define CLK_PIN_DEFAULT 41
 
-// #define HX711_SCK 13  // PORTA0 (esp32 S3)
-// #define HX711_DT 14   // PORTL (esp32 S3)
+称的部分
+VCC 需要接5v
+HX711_SCK 13  // PORTA0 (esp32 S3)
+HX711_DT 14   // PORTL (esp32 S3)
+GND
+
+三 图片
+
+四 一些常见问题的解决方式和可能原因
+五 代码链接。代码的架构（如何修改调整排版）
+
+1. 测试屏幕可以先用borderControl\borderControl_game\examples\2_PatternPlasma
+2. 测试称的链接和现实可以使用borderControl\borderControl_game\src\test_matrix
+3. 完整程序在borderControl\borderControl_game\src\main.ino
+
+六 新电脑如何安装库与注意事项 
