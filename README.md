@@ -1,12 +1,12 @@
 # borderControl
 amaze 2026
 
-一 游戏流程介绍
-二 设备完整接线图（和电子器件清单）
-三 接口细节
-四 一些常见问题的解决方式和可能原因
-五 代码链接。代码的架构（如何修改调整排版）
-六 新电脑如何安装库与注意事项
+## 一 游戏流程介绍
+## 二 设备完整接线图（和电子器件清单）
+## 三 接口细节
+## 四 一些常见问题的解决方式和可能原因
+## 五 代码链接。代码的架构（如何修改调整排版）
+## 六 新电脑如何安装库与注意事项
 
 
 
@@ -19,22 +19,22 @@ amaze 2026
 5. 所有关卡流程结束后，计算总分，总分界面停留10秒，如果通过游戏，亮起绿灯；如果不能通过，亮起红灯
 6. 最后进入排行榜界面
 
-二 接线：
+## 二 设备完整接线图（和电子器件清单）
 
-#define R1_PIN_DEFAULT 4
-#define G1_PIN_DEFAULT 5
-#define B1_PIN_DEFAULT 6
-#define R2_PIN_DEFAULT 7
-#define G2_PIN_DEFAULT 15
-#define B2_PIN_DEFAULT 16
-#define A_PIN_DEFAULT  18
-#define B_PIN_DEFAULT  8
-#define C_PIN_DEFAULT  3
-#define D_PIN_DEFAULT  42
-#define E_PIN_DEFAULT  17 // required for 1/32 scan panels, like 64x64. Any available pin would do, i.e. IO32
-#define LAT_PIN_DEFAULT 40
-#define OE_PIN_DEFAULT  2
-#define CLK_PIN_DEFAULT 41
+R1_PIN_DEFAULT 4
+G1_PIN_DEFAULT 5
+B1_PIN_DEFAULT 6
+R2_PIN_DEFAULT 7
+G2_PIN_DEFAULT 15
+B2_PIN_DEFAULT 16
+A_PIN_DEFAULT  18
+B_PIN_DEFAULT  8
+C_PIN_DEFAULT  3
+D_PIN_DEFAULT  42
+E_PIN_DEFAULT  17 // required for 1/32 scan panels
+LAT_PIN_DEFAULT 40
+OE_PIN_DEFAULT  2
+CLK_PIN_DEFAULT 41
 
 称的部分
 VCC 需要接5v
@@ -42,13 +42,13 @@ HX711_SCK 13  // PORTA0 (esp32 S3)
 HX711_DT 14   // PORTL (esp32 S3)
 GND
 
-三 图片
+## 三 图片
 
-四 一些常见问题的解决方式和可能原因
-五 代码链接。代码的架构（如何修改调整排版）
+## 四 一些常见问题的解决方式和可能原因
+## 五 代码链接。代码的架构（如何修改调整排版）
 
-1. 测试屏幕可以先用borderControl\borderControl_game\examples\2_PatternPlasma
-2. 测试称的链接和现实可以使用borderControl\borderControl_game\src\test_matrix
+1. 测试屏幕可以先用borderControl\borderControl_game\examples\2_PatternPlasma\2_PatternPlasma.ino
+2. 测试屏幕、灯、称的连接和现实可以使用borderControl\borderControl_game\src\test_matrix\test_matrix.ino
 3. 完整程序在borderControl\borderControl_game\src\main.ino
 
-六 新电脑如何安装库与注意事项 
+## 六 新电脑如何安装库与注意事项 

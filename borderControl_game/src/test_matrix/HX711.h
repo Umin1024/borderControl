@@ -3,8 +3,8 @@
 
 #include <Arduino.h>
 
-#define HX711_SCK 13  // PORTA0 (esp32 S3)
-#define HX711_DT 14   // PORTL (esp32 S3)
+#define HX711_SCK 13  // 
+#define HX711_DT 14   // 
 
 extern void Init_Hx711();
 extern unsigned long HX711_Read(void);

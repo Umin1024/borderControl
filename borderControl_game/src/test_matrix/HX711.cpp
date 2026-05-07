@@ -1,5 +1,7 @@
 #include "hx711.h"
+#include <freertos/portmacro.h>
 
+static portMUX_TYPE hx711Mux = portMUX_INITIALIZER_UNLOCKED;
 unsigned long HX711_Buffer = 0;
 unsigned long Weight_Maopi = 0;
 long Weight_Shiwu = 0;
@@ -35,7 +37,7 @@ unsigned long Get_Weight()
 		Weight_Shiwu = HX711_Buffer;
 		Weight_Shiwu = Weight_Shiwu - Weight_Maopi;				//获取实物的AD采样数值。
 	
-		Weight_Shiwu = (unsigned long)((float)Weight_Shiwu/19.5+0.05); 	
+		Weight_Shiwu = (unsigned long)((float)Weight_Shiwu/21.5+0.05); 	
 			//计算实物的实际重量
 			//因为不同的传感器特性曲线不一样，因此，每一个传感器需要矫正这里的40这个除数。
 			//当发现测试出来的重量偏大时，增加该数值。
@@ -88,7 +90,7 @@ unsigned long HX711_Read(void)	//增益128
   	while(digitalRead(HX711_DT)); 
 
   	// 关键的 24 位时序读出：在此段禁用中断，避免矩阵库的 Timer1 ISR 干扰
-  	noInterrupts();
+  	taskENTER_CRITICAL(&hx711Mux);
   	for(i=0;i<24;i++)
 	{ 
 	  	digitalWrite(HX711_SCK, HIGH); 
@@ -103,7 +105,7 @@ unsigned long HX711_Read(void)	//增益128
 	delayMicroseconds(1);
 	digitalWrite(HX711_SCK, LOW); 
 	delayMicroseconds(1);
-	interrupts(); // 恢复中断
+	taskEXIT_CRITICAL(&hx711Mux); // 恢复中断
 
 	count ^= 0x800000;
 	return(count);
