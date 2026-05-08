@@ -3,13 +3,26 @@
 
 #include <Arduino.h>
 
-#define HX711_SCK 13  // 
-#define HX711_DT 14   // 
 
-extern void Init_Hx711();
-extern unsigned long HX711_Read(void);
-extern unsigned long Get_Weight();
-extern void Get_Maopi();
-extern bool Flag_Error;
+class HX711
+{
+public:
+	HX711(int SCK_PIN,int DT_PIN,float GapValueIn=44);
+	long Get_Weight();
+	void begin();
+	int Pressed(int AlarmValue);
+
+	int HX711_SCK;
+	int HX711_DT;
+	float ValueGap;
+	long HX711_Buffer;
+	long Weight_Maopi;
+	long Weight_Shiwu;
+	int CurrentAlarm;
+private:	
+	void Get_Maopi();
+	unsigned long HX711_Read();
+
+};
 
 #endif
