@@ -55,7 +55,7 @@ long HX711::Get_Weight()
 	Weight_Shiwu = HX711_Buffer;
 	Weight_Shiwu = Weight_Shiwu - Weight_Maopi;				//获取实物的AD采样数值。
 	
-	Weight_Shiwu = (long)((float)Weight_Shiwu/ValueGap+0.05); 	//修改
+	Weight_Shiwu = (long)((float)Weight_Shiwu/ValueGap-0.05); 	//修改
 
 	return Weight_Shiwu;
 }

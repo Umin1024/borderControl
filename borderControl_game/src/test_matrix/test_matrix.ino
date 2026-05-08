@@ -14,14 +14,12 @@
 #define PIN_GREEN 12
 
 MatrixPanel_I2S_DMA *dma_display = nullptr;
-HX711 HX711_CH0(13, 14, 20); //SCK,DT,GapValue
+HX711 HX711_CH0(13, 14, 9.65); //SCK,DT,GapValue，需要调试温漂，小了小，大了大，修改GapValue
 
 int i = 0;
 
 void setup() {
-  HX711_CH0.begin();					//读取传感器支架毛重
-  delay(3000);								//延时3s用于传感器稳定
-  HX711_CH0.begin();					//重新读取传感器支架毛重用于后续计算
+
 
 
   HUB75_I2S_CFG mxconfig;
@@ -50,6 +48,9 @@ mxconfig.min_refresh_rate = 30;
   digitalWrite(PIN_GREEN, LOW);
 
   delay(1000);
+  HX711_CH0.begin();					//读取传感器支架毛重
+  delay(3000);								//延时3s用于传感器稳定
+  HX711_CH0.begin();					//重新读取传感器支架毛重用于后续计算
 }
 
 void loop() {
@@ -69,13 +70,13 @@ void loop() {
     digitalWrite(PIN_GREEN, HIGH);
   }
   delay(100);
-  // 左下角重量显示
-  // dma_display->setTextSize(1);
-  // dma_display->fillRect(120, 33, 96, 15, dma_display->color565(0, 0, 0));
-  // dma_display->setCursor(120, 40);// 0
-  // dma_display->print("W:");
-  // dma_display->print(weight);
-  // dma_display->print("g");
+  //左下角重量显示
+  dma_display->setTextSize(1);
+  dma_display->fillRect(120, 33, 96, 15, dma_display->color565(0, 0, 0));
+  dma_display->setCursor(120, 40);// 0
+  dma_display->print("W:");
+  dma_display->print(weight);
+  dma_display->print("g");
 
   // 右下角倒计时显示
   // dma_display->fillRect(150, 33, 40, 15, dma_display->color565(0, 0, 0));
