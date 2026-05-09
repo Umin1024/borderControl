@@ -50,7 +50,7 @@ void setup() {
     digitalWrite(PIN_GREEN, LOW);
 
     displayPage(PAGE_START);
-    delay(1000);
+    delay(3000);
     HX711_CH0.begin();
     delay(3000);
     HX711_CH0.begin();   // re-tare after sensor warm-up
