@@ -1,7 +1,7 @@
 #include "game_content.h"
 
 // --- UI strings ---
-const char *const TEXT_START = "PRESS START!";
+const char *const TEXT_START = "BORDER CONTROL!";
 const char *const TEXT_PROMPT_PREFIX = "discard ";
 const char *const TEXT_RESULT_PREFIX = "close! \n off by: ";
 const char *const TEXT_FINAL_PREFIX = "FINAL ERROR: \n";
