@@ -1,569 +1,182 @@
-
-// Core logic ported from alt_ctrl_weight.ino, adapted to ESP32-HUB75-MatrixPanel-I2S-DMA.
-// 删除了原物理按钮逻辑，改为每 3 秒自动触发“虚拟按钮”。
-
 #include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
-#include "Hx711.h"
+#include "HX711.h"
 #include "config.h"
+#include "game_content.h"
+#include "display.h"
 
-MatrixPanel_I2S_DMA *dma_display = nullptr;
-// yuemin
-unsigned long Weight = 0;
-unsigned long new_Weight = 0;
-unsigned long lastWeightMillis = 0;
-unsigned long lastPageMillis = 0;
+HX711 HX711_CH0(HX711_SCK, HX711_DT, HX711_GAP);
+MatrixPanel_I2S_DMA* dma_display = nullptr;
+
+// --- Game state ---
+unsigned long Weight             = 0;
+long          debugWeight        = 0;   // raw signed reading for debug overlay
+unsigned long lastWeightMillis   = 0;
+unsigned long lastPageMillis     = 0;
 unsigned long lastDisplayedWeight = 0xFFFFFFFFUL;
-unsigned long initialWeight = 0;
-long player_score = 0;
-long current_score = 0;
-long leaderboard[3] = {0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF};
-uint8_t currentPage = PAGE_START;
+unsigned long initialWeight      = 0;
+long          player_score       = 0;
+long          current_score      = 0;
+long          leaderboard[LEADERBOARD_SIZE];
+uint8_t       currentPage        = PAGE_START;
+uint8_t       selectedQuestions[NUM_LEVELS];  // which of the 3 variants is active this run
 
-uint16_t color333(uint8_t r, uint8_t g, uint8_t b)
-{
-  // 将 0-7 范围映射到 0-255 8bit 颜色
-  return dma_display->color565(r * 36, g * 36, b * 36);
-}
+// --- Forward declarations ---
+void displayPage(uint8_t pageNum);
+void resetGame();
+void calcScore(unsigned long itemWeight);
+void updateLeaderboard(long score);
 
-void setup()
-{
-  Init_Hx711();
-  Get_Maopi();
+// ============================================================
 
-  HUB75_I2S_CFG mxconfig;
-  mxconfig.mx_height = PANEL_RES_Y;
-  mxconfig.mx_width = PANEL_RES_X;
-  mxconfig.chain_length = PANEL_CHAIN;
-  mxconfig.gpio.e = PIN_E;
+void setup() {
+    for (int i = 0; i < LEADERBOARD_SIZE; i++) leaderboard[i] = 0x7FFFFFFF;
 
-  dma_display = new MatrixPanel_I2S_DMA(mxconfig);
-  dma_display->begin();
-  dma_display->setBrightness8(255);
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextWrap(false);
-  dma_display->setTextSize(1);
+    HUB75_I2S_CFG mxconfig;
+    mxconfig.mx_height    = PANEL_RES_Y;
+    mxconfig.mx_width     = PANEL_RES_X;
+    mxconfig.chain_length = PANEL_CHAIN;
+    mxconfig.gpio.e       = PIN_E;
+    mxconfig.min_refresh_rate = 30;
 
-  displayPage(PAGE_START);
-  show_weight();
-  lastPageMillis = millis();
-}
+    dma_display = new MatrixPanel_I2S_DMA(mxconfig);
+    dma_display->begin();
+    dma_display->setBrightness8(10);
+    dma_display->fillScreen(dma_display->color565(0, 0, 0));
+    dma_display->setTextWrap(false);
 
-void loop()
-{
-  // 虚拟按钮：每 3 秒自动翻页一次
-  if (millis() - lastPageMillis >= PAGE_AUTO_INTERVAL_MS)
-  {
+    pinMode(PIN_RED,   OUTPUT);
+    pinMode(PIN_GREEN, OUTPUT);
+    digitalWrite(PIN_RED,   LOW);
+    digitalWrite(PIN_GREEN, LOW);
+
+    displayPage(PAGE_START);
+    delay(1000);
+    HX711_CH0.begin();
+    delay(3000);
+    HX711_CH0.begin();   // re-tare after sensor warm-up
     lastPageMillis = millis();
-    nextPage();
-  }
+}
 
-  // 每 500ms 读取一次重量，变化时刷新显示
-  if (millis() - lastWeightMillis >= WEIGHT_INTERVAL_MS)
-  {
-    lastWeightMillis = millis();
-    unsigned long measured = Get_Weight();
-    if (measured < DISPLAY_DEADZONE)
-      measured = 0;
-
-    if (measured != lastDisplayedWeight)
-    {
-      lastDisplayedWeight = measured;
-      Weight = measured;
-      show_weight();
+void loop() {
+    if (millis() - lastPageMillis >= PAGE_AUTO_INTERVAL_MS) {
+        lastPageMillis = millis();
+        currentPage++;
+        if (currentPage >= TOTAL_PAGES) currentPage = PAGE_START;
+        displayPage(currentPage);
+        disp_debug_weight(debugWeight);  // redraw overlay after page clear
     }
-  }
 
-  delay(20);
+    if (millis() - lastWeightMillis >= WEIGHT_INTERVAL_MS) {
+        lastWeightMillis = millis();
+        long raw = (long)HX711_CH0.Get_Weight();
+        debugWeight = raw;
+        unsigned long measured = (raw > 0) ? (unsigned long)raw : 0;
+        if (measured < DISPLAY_DEADZONE) measured = 0;
+        if (measured != lastDisplayedWeight) {
+            lastDisplayedWeight = measured;
+            Weight = measured;
+        }
+        disp_debug_weight(debugWeight);
+    }
+
+    delay(20);
 }
 
-void nextPage(void)
-{
-  currentPage++;
-  if (currentPage >= TOTAL_PAGES)
-  {
-    currentPage = PAGE_START;
-  }
-  displayPage(currentPage);
-  show_weight();
+// ============================================================
+// Page router
+// ============================================================
+
+void displayPage(uint8_t pageNum) {
+    // START
+    if (pageNum == PAGE_START) {
+        resetGame();
+        disp_start_screen();
+        return;
+    }
+
+    // INTRO pages
+    if (pageNum >= PAGE_INTRO_BASE && pageNum < PAGE_LEVEL_BASE) {
+        disp_intro(pageNum - PAGE_INTRO_BASE);
+        return;
+    }
+
+    // LEVEL pages  (pairs: prompt / result)
+    if (pageNum >= PAGE_LEVEL_BASE && pageNum < PAGE_FINAL) {
+        uint8_t levelPage = pageNum - PAGE_LEVEL_BASE;
+        uint8_t levelIdx  = levelPage / 2;
+        bool    isResult  = (levelPage % 2 == 1);
+        const Question& q = LEVELS[levelIdx].questions[selectedQuestions[levelIdx]];
+
+        if (isResult) {
+            calcScore(q.weightGrams);
+            disp_level_result(current_score);
+        } else {
+            if (levelIdx == 0) {
+                initialWeight       = Weight;  // baseline: player is on scale with all luggage
+                lastDisplayedWeight = Weight;
+            }
+            disp_level_prompt(q.itemName);
+        }
+        return;
+    }
+
+    // FINAL
+    if (pageNum == PAGE_FINAL) {
+        disp_final(player_score);
+        digitalWrite(PIN_RED,   HIGH);
+        digitalWrite(PIN_GREEN, HIGH);
+        return;
+    }
+
+    // LEADERBOARD
+    if (pageNum == PAGE_LEADERBOARD) {
+        updateLeaderboard(player_score);
+        disp_leaderboard(leaderboard, LEADERBOARD_SIZE);
+        return;
+    }
 }
 
-void previousPage(void)
-{
-  if (currentPage == 0)
-  {
-    currentPage = TOTAL_PAGES - 1;
-  }
-  else
-  {
-    currentPage--;
-  }
-  displayPage(currentPage);
+// ============================================================
+// Game logic
+// ============================================================
+
+void resetGame() {
+    player_score  = 0;
+    current_score = 0;
+    Weight        = 0;
+    initialWeight = 0;
+    digitalWrite(PIN_RED,   LOW);
+    digitalWrite(PIN_GREEN, LOW);
+
+    // Pick one random question variant per level for this game run.
+    randomSeed(millis());
+    for (uint8_t i = 0; i < NUM_LEVELS; i++) {
+        selectedQuestions[i] = random(QUESTIONS_PER_LEVEL);
+    }
 }
 
-void show_current_score(unsigned long item_weight)
-{
-  new_Weight = Weight;
-  unsigned long diff = (new_Weight >= initialWeight) ? (new_Weight - initialWeight) : (initialWeight - new_Weight);
-  long score = (long)diff - (long)item_weight;
-  if (score < 0)
-    score = -score;
-  current_score = score;
-  player_score += current_score;
-  initialWeight = new_Weight;
+// Calculate how far off the player was and accumulate to player_score.
+void calcScore(unsigned long itemWeight) {
+    unsigned long diff = (Weight >= initialWeight)
+                       ? (Weight - initialWeight)
+                       : (initialWeight - Weight);
+    long error = (long)diff - (long)itemWeight;
+    if (error < 0) error = -error;
+    current_score  = error;
+    player_score  += current_score;
+    initialWeight  = Weight;  // new baseline for next level
 }
 
-void displayPage(uint8_t pageNum)
-{
-  switch (pageNum)
-  {
-  case PAGE_START:
-    page_start_0();
-    break;
-  case PAGE_MSG1:
-    page_msg1();
-    break;
-  case PAGE_MSG2:
-    page_msg2();
-    break;
-  case PAGE_MSG3:
-    page_msg3();
-    break;
-  case PAGE_MSG4:
-    page_msg4();
-    break;
-  case PAGE_MSG5:
-    page_msg5();
-    break;
-  case PAGE_DISCARD_1:
-    initialWeight = Weight;
-    lastDisplayedWeight = Weight;
-    page_discard_1();
-    break;
-  case PAGE_DISCARD_2:
-    show_current_score(740);
-    page_discard_2();
-    break;
-  case PAGE_DISCARD_3:
-    page_discard_3();
-    break;
-  case PAGE_DISCARD_4:
-    show_current_score(1200);
-    page_discard_4();
-    break;
-  case PAGE_DISCARD_5:
-    page_discard_5();
-    break;
-  case PAGE_DISCARD_6:
-    show_current_score(1500);
-    page_discard_6();
-    break;
-  case PAGE_DISCARD_7:
-    page_discard_7();
-    break;
-  case PAGE_DISCARD_8:
-    show_current_score(2110);
-    page_discard_8();
-    break;
-  case PAGE_DISCARD_9:
-    page_discard_9();
-    break;
-  case PAGE_DISCARD_10:
-    show_current_score(2500);
-    page_discard_10();
-    break;
-  case PAGE_DISCARD_11:
-    page_discard_11();
-    break;
-  case PAGE_DISCARD_12:
-    show_current_score(4500);
-    page_discard_12();
-    break;
-  case PAGE_DISCARD_13:
-    page_discard_13();
-    break;
-  case PAGE_DISCARD_14:
-    show_current_score(400);
-    page_discard_14();
-    break;
-  case PAGE_DISCARD_15:
-    page_discard_15();
-    break;
-  case PAGE_DISCARD_16:
-    show_current_score(150);
-    page_discard_16();
-    break;
-  case PAGE_DISCARD_FINAL:
-    page_discard_final();
-    break;
-  case PAGE_LEADERBOARD:
-    updateLeaderboard(player_score);
-    page_leaderboard();
-    break;
-  default:
-    currentPage = PAGE_START;
-    page_start_0();
-    break;
-  }
-}
-
-void page_start_0()
-{
-  player_score = 0;
-  current_score = 0;
-  Weight = 0;
-  initialWeight = 0;
-  new_Weight = 0;
-
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("press start!");
-}
-
-void page_msg1()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(true);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("welcome to the");
-  dma_display->println("great nation's");
-  dma_display->println("port of entry");
-}
-
-void page_msg2()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(true);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("step onto the");
-  dma_display->println("scale with all");
-  dma_display->println("your belongings");
-}
-
-void page_msg3()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(true);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("do not remove");
-  dma_display->println("anything until");
-  dma_display->println("instructed");
-}
-
-void page_msg4()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(true);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("...");
-}
-
-void page_msg5()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(true);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("foreign and");
-  dma_display->println("prohibited items");
-  dma_display->println("detected");
-}
-
-void page_discard_1()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("please discard");
-  dma_display->setCursor(0, 8);
-  dma_display->println("your jar of spice");
-}
-
-void page_discard_2()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("... close, but");
-  dma_display->setCursor(0, 8);
-  dma_display->println("you are still");
-  dma_display->setCursor(0, 16);
-  dma_display->println(String(current_score) + " grams off.");
-}
-
-void page_discard_3()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("please discard");
-  dma_display->setCursor(0, 8);
-  dma_display->println("your kettle");
-}
-
-void page_discard_4()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("... close, but");
-  dma_display->setCursor(0, 8);
-  dma_display->println("you are still");
-  dma_display->setCursor(0, 16);
-  dma_display->println(String(current_score) + " grams off.");
-}
-
-void page_discard_5()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("please discard");
-  dma_display->setCursor(0, 8);
-  dma_display->println("your blanket");
-}
-
-void page_discard_6()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("... close, but");
-  dma_display->setCursor(0, 8);
-  dma_display->println("you are still");
-  dma_display->setCursor(0, 16);
-  dma_display->println(String(current_score) + " grams off.");
-}
-
-void page_discard_7()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("please discard");
-  dma_display->setCursor(0, 8);
-  dma_display->println("your wok");
-}
-
-void page_discard_8()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("... close, but");
-  dma_display->setCursor(0, 8);
-  dma_display->println("you are still");
-  dma_display->setCursor(0, 16);
-  dma_display->println(String(current_score) + " grams off.");
-}
-
-void page_discard_9()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("please discard");
-  dma_display->setCursor(0, 8);
-  dma_display->println("your tent");
-}
-
-void page_discard_10()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("... close, but");
-  dma_display->setCursor(0, 8);
-  dma_display->println("you are still");
-  dma_display->setCursor(0, 16);
-  dma_display->println(String(current_score) + " grams off.");
-}
-
-void page_discard_11()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("please discard");
-  dma_display->setCursor(0, 8);
-  dma_display->println("your rice cooker");
-}
-
-void page_discard_12()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("... close, but");
-  dma_display->setCursor(0, 8);
-  dma_display->println("you are still");
-  dma_display->setCursor(0, 16);
-  dma_display->println(String(current_score) + " grams off.");
-}
-
-void page_discard_13()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("please discard");
-  dma_display->setCursor(0, 8);
-  dma_display->println("your 400cc blood");
-}
-
-void page_discard_14()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("... close, but");
-  dma_display->setCursor(0, 8);
-  dma_display->println("you are still");
-  dma_display->setCursor(0, 16);
-  dma_display->println(String(current_score) + " grams off.");
-}
-
-void page_discard_15()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("please discard");
-  dma_display->setCursor(0, 8);
-  dma_display->println("your kidney");
-}
-
-void page_discard_16()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 0, 0));
-  dma_display->println("... close, but");
-  dma_display->setCursor(0, 8);
-  dma_display->println("you are still");
-  dma_display->setCursor(0, 16);
-  dma_display->println(String(current_score) + " grams off.");
-}
-
-void page_discard_final()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(0, 7, 0));
-  dma_display->println("Final Deviation:");
-  dma_display->setCursor(0, 16);
-  dma_display->setTextColor(color333(7, 7, 0));
-  dma_display->print(player_score);
-  dma_display->println(" g");
-  dma_display->setCursor(0, 32);
-  dma_display->setTextColor(color333(7, 0, 7));
-  dma_display->println("The screening has");
-  dma_display->println("been completed.");
-}
-
-void show_weight()
-{
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->fillRect(0, 40, dma_display->width(), 8, dma_display->color565(0, 0, 0));
-  dma_display->setCursor(0, 40);
-  // dma_display->setTextColor(color333(0, 7, 0));
-  dma_display->print(Weight);
-  dma_display->print(" g");
-}
-
-void updateLeaderboard(long score)
-{
-  if (score <= 0)
-    return;
-  if (score < leaderboard[2])
-  {
-    leaderboard[2] = score;
-  }
-  else
-  {
-    return;
-  }
-  if (leaderboard[2] < leaderboard[1])
-  {
-    long temp = leaderboard[1];
-    leaderboard[1] = leaderboard[2];
-    leaderboard[2] = temp;
-  }
-  if (leaderboard[1] < leaderboard[0])
-  {
-    long temp = leaderboard[0];
-    leaderboard[0] = leaderboard[1];
-    leaderboard[1] = temp;
-  }
-}
-
-void page_leaderboard()
-{
-  dma_display->fillScreen(dma_display->color565(0, 0, 0));
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setCursor(0, 0);
-  dma_display->setTextColor(color333(7, 7, 0));
-  dma_display->println("LEADERBOARD");
-  dma_display->setCursor(4, 8);
-  dma_display->setTextColor(color333(0, 7, 7));
-  dma_display->print("1: ");
-  dma_display->println(leaderboard[0] == 0x7FFFFFFF ? String("--") : String(leaderboard[0]));
-  dma_display->setCursor(4, 16);
-  dma_display->setTextColor(color333(7, 7, 0));
-  dma_display->print("2: ");
-  dma_display->println(leaderboard[1] == 0x7FFFFFFF ? String("--") : String(leaderboard[1]));
-  dma_display->setCursor(4, 24);
-  dma_display->setTextColor(color333(7, 0, 7));
-  dma_display->print("3: ");
-  dma_display->println(leaderboard[2] == 0x7FFFFFFF ? String("--") : String(leaderboard[2]));
-  dma_display->setCursor(4, 40);
-  dma_display->setTextColor(color333(7, 7, 7));
-  dma_display->println("Next page in 3s");
+void updateLeaderboard(long score) {
+    if (score <= 0) return;
+    if (score >= leaderboard[LEADERBOARD_SIZE - 1]) return;
+    leaderboard[LEADERBOARD_SIZE - 1] = score;
+    // bubble up
+    for (int i = LEADERBOARD_SIZE - 1; i > 0; i--) {
+        if (leaderboard[i] < leaderboard[i - 1]) {
+            long tmp          = leaderboard[i - 1];
+            leaderboard[i - 1] = leaderboard[i];
+            leaderboard[i]    = tmp;
+        }
+    }
 }

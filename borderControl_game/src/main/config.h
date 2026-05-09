@@ -1,36 +1,34 @@
 #pragma once
 
-#define PANEL_RES_X 96    // Width of each individual panel
-#define PANEL_RES_Y 48     // Height of each individual panel
-#define PANEL_CHAIN 1      // Number of panels chained together
-#define PIN_E 17
+// --- Hardware pins ---
+#define PANEL_RES_X 96
+#define PANEL_RES_Y 48
+#define PANEL_CHAIN 2
+#define PIN_E       17
+#define PIN_RED     11
+#define PIN_GREEN   12
 
-#define PAGE_START           0
-#define PAGE_MSG1            1
-#define PAGE_MSG2            2
-#define PAGE_MSG3            3
-#define PAGE_MSG4            4
-#define PAGE_MSG5            5
-#define PAGE_DISCARD_1       6
-#define PAGE_DISCARD_2       7
-#define PAGE_DISCARD_3       8
-#define PAGE_DISCARD_4       9
-#define PAGE_DISCARD_5       10
-#define PAGE_DISCARD_6       11
-#define PAGE_DISCARD_7       12
-#define PAGE_DISCARD_8       13
-#define PAGE_DISCARD_9       14
-#define PAGE_DISCARD_10      15
-#define PAGE_DISCARD_11      16
-#define PAGE_DISCARD_12      17
-#define PAGE_DISCARD_13      18
-#define PAGE_DISCARD_14      19
-#define PAGE_DISCARD_15      20
-#define PAGE_DISCARD_16      21
-#define PAGE_DISCARD_FINAL   22
-#define PAGE_LEADERBOARD     23
-#define TOTAL_PAGES          24
+// --- Sensor ---
+#define HX711_SCK        13
+#define HX711_DT         14
+#define HX711_GAP        9.65f   // calibration: smaller = lighter, larger = heavier
 
-#define DISPLAY_DEADZONE 40
-#define WEIGHT_INTERVAL_MS 500
-#define PAGE_AUTO_INTERVAL_MS 3000
+// --- Timing ---
+#define WEIGHT_INTERVAL_MS    500
+#define PAGE_AUTO_INTERVAL_MS 10000
+#define DISPLAY_DEADZONE      40
+
+// --- Game ---
+#define NUM_LEVELS          8
+#define QUESTIONS_PER_LEVEL 3   // each level has this many question variants
+#define NUM_INTRO_PAGES     5
+#define LEADERBOARD_SIZE    3
+
+// --- Page layout (auto-computed, do not edit) ---
+// Flow: START → INTRO(x5) → [PROMPT + RESULT](x NUM_LEVELS) → FINAL → LEADERBOARD
+#define PAGE_START       0
+#define PAGE_INTRO_BASE  1
+#define PAGE_LEVEL_BASE  (PAGE_INTRO_BASE + NUM_INTRO_PAGES)
+#define PAGE_FINAL       (PAGE_LEVEL_BASE + NUM_LEVELS * 2)
+#define PAGE_LEADERBOARD (PAGE_FINAL + 1)
+#define TOTAL_PAGES      (PAGE_LEADERBOARD + 1)

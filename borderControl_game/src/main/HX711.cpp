@@ -1,110 +1,116 @@
-#include "hx711.h"
+#include "HX711.h"
+#include <freertos/portmacro.h>
 
-unsigned long HX711_Buffer = 0;
-unsigned long Weight_Maopi = 0;
-long Weight_Shiwu = 0;
-bool Flag_Error = 0;
-
-//****************************************************
-//初始化HX711
-//****************************************************
-void Init_Hx711()
+// 定义 ESP32 双核自旋锁（解决 LED 时序冲突的关键！）
+portMUX_TYPE hx711_mux = portMUX_INITIALIZER_UNLOCKED;
+HX711::HX711(int SCK_PIN, int DT_PIN, float GapValueIn)
 {
-	pinMode(HX711_SCK, OUTPUT);	
-	pinMode(HX711_DT, INPUT);      // 确保 DT 是输入模式
-	digitalWrite(HX711_SCK, LOW);  // 初始状态
+	HX711_SCK = SCK_PIN;
+	HX711_DT = DT_PIN;
+	ValueGap = GapValueIn;
 }
 
-
 //****************************************************
-//获取毛皮重量
+// 初始化HX711
 //****************************************************
-void Get_Maopi()
+void HX711::begin()
 {
-	Weight_Maopi = HX711_Read();		
-} 
+	pinMode(HX711_SCK, OUTPUT);
+	pinMode(HX711_DT, INPUT);
+
+	Get_Maopi();
+}
+
+int HX711::Pressed(int AlarmValue)
+{
+	if (Get_Weight() >= AlarmValue && CurrentAlarm == 0)
+	{
+		CurrentAlarm = 1;
+		return 1;
+	}
+	else if (Get_Weight() < AlarmValue)
+	{
+		CurrentAlarm = 0;
+		return 0;
+	}
+
+	return 0;
+}
 
 //****************************************************
-//称重
+// 获取毛皮重量
 //****************************************************
-unsigned long Get_Weight()
+void HX711::Get_Maopi()
+{
+	Weight_Maopi = HX711_Read();
+}
+
+//****************************************************
+// 称重
+//****************************************************
+long HX711::Get_Weight()
 {
 	HX711_Buffer = HX711_Read();
-	if(HX711_Buffer >= Weight_Maopi)			
-	{
-		Weight_Shiwu = HX711_Buffer;
-		Weight_Shiwu = Weight_Shiwu - Weight_Maopi;				//获取实物的AD采样数值。
-	
-		Weight_Shiwu = (unsigned long)((float)Weight_Shiwu/19.5+0.05); 	
-			//计算实物的实际重量
-			//因为不同的传感器特性曲线不一样，因此，每一个传感器需要矫正这里的40这个除数。
-			//当发现测试出来的重量偏大时，增加该数值。
-			//如果测试出来的重量偏小时，减小改数值。
-			//该数值一般在20-50之间。因传感器不同而定。
-			//+0.05是为了四舍五入百分位
-                if(Weight_Shiwu > 100000)
-        	{
-        		Flag_Error = 1;
-        		Serial.print("Error1");
-        	}
-                else
-        	{
-        		Flag_Error = 0;	
-        	}	
-	}
-        else if(HX711_Buffer > Weight_Maopi - 3000)
-        {
-            Flag_Error = 0;	
-            Weight_Shiwu = 0;
-        }
-        else
-        {
-           Flag_Error = 1;
-           Serial.print("Error2"); 
-        }
 
-	
-	
+	Weight_Shiwu = HX711_Buffer;
+	Weight_Shiwu = Weight_Shiwu - Weight_Maopi; // 获取实物的AD采样数值。
+
+	Weight_Shiwu = (long)((float)Weight_Shiwu / ValueGap - 0.05); // 修改
+
 	return Weight_Shiwu;
 }
 
 //****************************************************
-//读取HX711
+// 读取HX711
 //****************************************************
-unsigned long HX711_Read(void)	//增益128
+
+// ... (保留你原来的构造函数、begin、Pressed、Get_Maopi、Get_Weight 不变) ...
+
+//****************************************************
+// 读取HX711 (安全版，防 LED 干扰 + 防死机)
+//****************************************************
+unsigned long HX711::HX711_Read()
 {
-	unsigned long count; 
+	unsigned long count = 0;
 	unsigned char i;
-	bool Flag = 0;
+	int timeout = 10000; // 超时防止死机
 
 	digitalWrite(HX711_DT, HIGH);
 	delayMicroseconds(1);
-
 	digitalWrite(HX711_SCK, LOW);
 	delayMicroseconds(1);
 
-  	count=0; 
-  	// 等待 DATA 线变为低电平（数据就绪）
-  	while(digitalRead(HX711_DT)); 
+	// 1. 等待数据准备好，加入超时机制，防止拔掉传感器后死机
+	while (digitalRead(HX711_DT))
+	{
+		timeout--;
+		if (timeout == 0)
+			return 0; // 如果超时没读到，返回0
+		delayMicroseconds(1);
+	}
 
-  	// 关键的 24 位时序读出：在此段禁用中断，避免矩阵库的 Timer1 ISR 干扰
-  	noInterrupts();
-  	for(i=0;i<24;i++)
-	{ 
-	  	digitalWrite(HX711_SCK, HIGH); 
+	// 2. ⚡开启中断保护，防止被 LED 的 DMA 打断！⚡
+	portENTER_CRITICAL(&hx711_mux);
+
+	// 3. 严格的 24 bit 读取时序
+	for (i = 0; i < 24; i++)
+	{
+		digitalWrite(HX711_SCK, HIGH);
 		delayMicroseconds(1);
-	  	count=count<<1; 
-		digitalWrite(HX711_SCK, LOW); 
+		count = count << 1;
+		digitalWrite(HX711_SCK, LOW);
 		delayMicroseconds(1);
-	  	if(digitalRead(HX711_DT))
-			count++; 
-	} 
- 	digitalWrite(HX711_SCK, HIGH); 
+		if (digitalRead(HX711_DT))
+			count++;
+	}
+	digitalWrite(HX711_SCK, HIGH);
 	delayMicroseconds(1);
-	digitalWrite(HX711_SCK, LOW); 
+	digitalWrite(HX711_SCK, LOW);
 	delayMicroseconds(1);
-	interrupts(); // 恢复中断
+
+	// 4. ⚡关闭中断保护，让 LED 恢复工作⚡
+	portEXIT_CRITICAL(&hx711_mux);
 
 	count ^= 0x800000;
-	return(count);
+	return count;
 }
