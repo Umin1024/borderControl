@@ -59,9 +59,62 @@ GND
 
 ### 五 代码链接。代码的架构（如何修改调整排版）
 
-1. 测试屏幕可以先用borderControl\borderControl_game\examples\2_PatternPlasma\2_PatternPlasma.ino
-2. 测试屏幕、灯、称的连接和现实可以使用borderControl\borderControl_game\src\test_matrix\test_matrix.ino
-3. 完整程序在borderControl\borderControl_game\src\main.ino
+#### 1. 从哪里开始看
+1. 只测试屏幕动画：`borderControl\borderControl_game\src\test_pix\2_PatternPlasma.ino`
+2. 测试屏幕、灯、称是否都正常：`borderControl\borderControl_game\src\test_matrix\test_matrix.ino`
+3. 正式游戏程序入口：`borderControl\borderControl_game\src\main\main.ino`
+4. `borderControl\borderControl_game\src\test\test.ino` 是较早的一体化版本，现在主要作为旧逻辑参考，不是当前主入口。
+
+#### 2. 正式程序的文件分工
+- `borderControl_game\src\main\main.ino`
+  - 程序入口。
+  - `setup()` 负责初始化屏幕、红绿灯、HX711，并做两次 tare。
+  - `loop()` 里有两个定时器：每 `WEIGHT_INTERVAL_MS` 读一次重量；每 `PAGE_AUTO_INTERVAL_MS` 自动翻一页。
+  - `displayPage()` 是总路由，决定当前显示开始页、介绍页、题目页、结果页、总分页、排行榜页。
+  - `calcScore()` 负责算当前关卡误差，`updateLeaderboard()` 负责更新排行榜。
+- `borderControl_game\src\main\config.h`
+  - 所有全局参数都在这里：引脚、屏幕尺寸、称的校准系数 `HX711_GAP`、页面时间、关卡数量、intro 数量、排行榜大小。
+  - 想改节奏、页数、硬件参数，优先先看这个文件。
+- `borderControl_game\src\main\game_content.h / game_content.cpp`
+  - 放游戏内容数据。
+  - `INTRO_TEXTS` 是开场文案。
+  - `LEVELS` 是每一关的题目和标准重量；每关有 `QUESTIONS_PER_LEVEL` 个变体，开局随机抽一个。
+  - 想改题目文字、物品名字、标准克重，主要改这里。
+- `borderControl_game\src\main\display.h / display.cpp`
+  - 纯显示层，不做分数和流程判断。
+  - `disp_start_screen()`、`disp_intro()`、`disp_level_prompt()`、`disp_level_result()`、`disp_final()`、`disp_leaderboard()` 分别画不同页面。
+  - 想改排版、字号、颜色、换行、文字位置，主要改这里。
+  - `textSetup()` 是大部分页面共用的文字样式入口。
+- `borderControl_game\src\main\HX711.h / HX711.cpp`
+  - 称重驱动。
+  - `begin()` 会记录空载基准，`Get_Weight()` 返回当前克重。
+  - 这里加了临界区保护，避免 LED DMA 刷屏打断 HX711 读数。
+  - 如果称不稳、读数异常，优先看这里。
+
+#### 3. 当前程序实际流程（以 `borderControl_game\src\main\main.ino` 为准）
+`PAGE_START` → 5 页 intro → 8 关 ×（题目页 + 结果页）→ 总分页 → 排行榜页 → 回到开始页
+
+补充说明：
+- 当前版本是统一定时自动翻页，页间隔由 `PAGE_AUTO_INTERVAL_MS` 控制，默认 10000ms。
+- 当前版本会持续读取重量，并在右下角显示 debug 重量。
+- 第 1 个题目页会把当时的重量记为基准；每次进入结果页时，用前后重量差和题目标准重量比较，累计误差分数。
+
+#### 4. 常见修改对应改哪里
+- 改文案：`game_content.cpp`
+- 改题目和标准重量：`game_content.cpp` 里的 `LEVELS`
+- 改页数、时间、硬件参数、校准系数：`config.h`
+- 改页面排版、颜色、字体大小、位置：`display.cpp`
+- 改流程推进方式、计分逻辑、排行榜逻辑：`main.ino`
+- 改称重底层读取方式：`HX711.cpp`
+
+#### 5. 哪些文件通常不要动
+- `borderControl_game\src\ESP32-HUB75-MatrixPanel-I2S-DMA.*`
+- `borderControl_game\src\ESP32-HUB75-VirtualMatrixPanel_T.hpp`
+- `borderControl_game\src\ESP32-VirtualMatrixPanel-I2S-DMA.h`
+- `borderControl_game\src\platforms\...`
+- `borderControl_game\src\cie_luts.h`
+
+这些基本是 HUB75 屏幕驱动库源码。除非你在修底层驱动问题，否则平时改 `src\main` 下面几个文件就够了。
 ---
 
 ### 六 新电脑如何安装库与注意事项 
