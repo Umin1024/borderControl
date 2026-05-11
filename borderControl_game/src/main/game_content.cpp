@@ -3,7 +3,7 @@
 // --- UI strings ---
 const char *const TEXT_START = "BORDER CONTROL\nPLEASE STEP ON\nTHE SCALE";
 const char *const TEXT_PROMPT_PREFIX = "discard:";
-const char *const TEXT_RESULT_PREFIX = "close. off by";
+const char *const TEXT_RESULT_PREFIX = "close. \noff by";
 const char *const TEXT_FINAL_PREFIX = "final error";
 const char *const TEXT_LEADERBOARD_PREFIX = "best:";
 
