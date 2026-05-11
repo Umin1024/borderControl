@@ -15,9 +15,6 @@ unsigned long lastWeightMillis = 0;
 unsigned long lastPageMillis = 0;
 unsigned long lastDisplayedWeight = 0xFFFFFFFFUL;
 unsigned long initialWeight = 0;
-unsigned long frozenWeight = 0;
-unsigned long leaderboardPageShownMillis = 0;
-bool startPlayerArmed = false;
 long player_score = 0;
 long current_score = 0;
 long leaderboard[LEADERBOARD_SIZE];
@@ -32,12 +29,6 @@ void updateLeaderboard(long score);
 String pageLabel(uint8_t pageNum);
 String pageText(uint8_t pageNum);
 uint16_t pageColor(uint8_t pageNum);
-bool playerPassed();
-unsigned long pageDuration(uint8_t pageNum);
-bool isPromptPage(uint8_t pageNum);
-bool isResultPage(uint8_t pageNum);
-void updatePageProgress();
-void updatePageOverlay();
 
 // ============================================================
 
@@ -92,6 +83,17 @@ void loop()
         }
     }
 
+    if (millis() - lastPageMillis >= PAGE_AUTO_INTERVAL_MS)
+    {
+        lastPageMillis = millis();
+        currentPage++;
+        if (currentPage >= TOTAL_PAGES)
+            currentPage = PAGE_START;
+        displayPage(currentPage);
+        disp_print_serial_preview();
+        disp_debug_weight(debugWeight); // redraw overlay after page clear
+    }
+
     if (millis() - lastWeightMillis >= WEIGHT_INTERVAL_MS)
     {
         lastWeightMillis = millis();
@@ -105,23 +107,8 @@ void loop()
             lastDisplayedWeight = measured;
             Weight = measured;
         }
+        disp_debug_weight(debugWeight);
     }
-
-    if (currentPage == PAGE_START)
-    {
-        if (Weight < PLAYER_WEIGHT_THRESHOLD_G)
-            startPlayerArmed = true;
-        if (startPlayerArmed && Weight >= PLAYER_WEIGHT_THRESHOLD_G)
-        {
-            displayPage(PAGE_INTRO_BASE);
-            disp_print_serial_preview();
-            delay(20);
-            return;
-        }
-    }
-
-    updatePageProgress();
-    updatePageOverlay();
 
     delay(20);
 }
@@ -132,17 +119,10 @@ void loop()
 
 void displayPage(uint8_t pageNum)
 {
-    digitalWrite(PIN_RED, LOW);
-    digitalWrite(PIN_GREEN, LOW);
-
-    currentPage = pageNum;
-    lastPageMillis = millis();
-
     // START
     if (pageNum == PAGE_START)
     {
         resetGame();
-        startPlayerArmed = false;
         disp_show_page(pageLabel(pageNum), pageText(pageNum), pageColor(pageNum));
         return;
     }
@@ -164,12 +144,12 @@ void displayPage(uint8_t pageNum)
 
         if (isResult)
         {
-            frozenWeight = Weight;
             calcScore(q.weightGrams);
         }
         else if (levelIdx == 0)
         {
-            initialWeight = Weight;
+            initialWeight = Weight; // baseline: player is on scale with all luggage
+            lastDisplayedWeight = Weight;
         }
 
         disp_show_page(pageLabel(pageNum), pageText(pageNum), pageColor(pageNum));
@@ -180,17 +160,8 @@ void displayPage(uint8_t pageNum)
     if (pageNum == PAGE_FINAL)
     {
         disp_show_page(pageLabel(pageNum), pageText(pageNum), pageColor(pageNum));
-        return;
-    }
-
-    // ACCESS RESULT
-    if (pageNum == PAGE_ACCESS_RESULT)
-    {
-        disp_show_page(pageLabel(pageNum), pageText(pageNum), pageColor(pageNum));
-        if (playerPassed())
-            digitalWrite(PIN_GREEN, HIGH);
-        else
-            digitalWrite(PIN_RED, HIGH);
+        digitalWrite(PIN_RED, HIGH);
+        digitalWrite(PIN_GREEN, HIGH);
         return;
     }
 
@@ -198,8 +169,7 @@ void displayPage(uint8_t pageNum)
     if (pageNum == PAGE_LEADERBOARD)
     {
         updateLeaderboard(player_score);
-        leaderboardPageShownMillis = millis();
-        disp_show_leaderboard(leaderboard, LEADERBOARD_SIZE, pageColor(pageNum));
+        disp_show_page(pageLabel(pageNum), pageText(pageNum), pageColor(pageNum));
         return;
     }
 }
@@ -214,7 +184,6 @@ void resetGame()
     current_score = 0;
     Weight = 0;
     initialWeight = 0;
-    frozenWeight = 0;
     digitalWrite(PIN_RED, LOW);
     digitalWrite(PIN_GREEN, LOW);
 
@@ -229,15 +198,15 @@ void resetGame()
 // Calculate how far off the player was and accumulate to player_score.
 void calcScore(unsigned long itemWeight)
 {
-    unsigned long diff = (frozenWeight >= initialWeight)
-                             ? (frozenWeight - initialWeight)
-                             : (initialWeight - frozenWeight);
+    unsigned long diff = (Weight >= initialWeight)
+                             ? (Weight - initialWeight)
+                             : (initialWeight - Weight);
     long error = (long)diff - (long)itemWeight;
     if (error < 0)
         error = -error;
     current_score = error;
     player_score += current_score;
-    initialWeight = frozenWeight;
+    initialWeight = Weight; // new baseline for next level
 }
 
 void updateLeaderboard(long score)
@@ -280,9 +249,6 @@ String pageLabel(uint8_t pageNum)
     if (pageNum == PAGE_FINAL)
         return String("FINAL");
 
-    if (pageNum == PAGE_ACCESS_RESULT)
-        return String("ACCESS RESULT");
-
     if (pageNum == PAGE_LEADERBOARD)
         return String("LEADERBOARD");
 
@@ -293,9 +259,6 @@ uint16_t pageColor(uint8_t pageNum)
 {
     if (pageNum == PAGE_FINAL)
         return color333(0, 7, 0);
-
-    if (pageNum == PAGE_ACCESS_RESULT)
-        return playerPassed() ? color333(0, 7, 0) : color333(7, 0, 0);
 
     if (pageNum == PAGE_LEADERBOARD)
         return color333(7, 7, 0);
@@ -329,15 +292,12 @@ String pageText(uint8_t pageNum)
     if (pageNum == PAGE_FINAL)
         return String(TEXT_FINAL_PREFIX) + " " + String(player_score) + "g";
 
-    if (pageNum == PAGE_ACCESS_RESULT)
-        return playerPassed() ? String("Access Granted.") : String("Access Denied.");
-
     if (pageNum == PAGE_LEADERBOARD)
     {
         String text = String(TEXT_LEADERBOARD_PREFIX);
         for (uint8_t i = 0; i < LEADERBOARD_SIZE; i++)
         {
-            text += (leaderboard[i] == 0x7FFFFFFF) ? "xxx" : String(leaderboard[i]) + "g";
+            text += (leaderboard[i] == 0x7FFFFFFF) ? "--" : String(leaderboard[i]) + "g";
             if (i < LEADERBOARD_SIZE - 1)
                 text += " ";
         }
@@ -345,86 +305,5 @@ String pageText(uint8_t pageNum)
     }
 
     return String();
-}
-
-bool playerPassed()
-{
-    return player_score < PASS_THRESHOLD_G;
-}
-
-unsigned long pageDuration(uint8_t pageNum)
-{
-    if (pageNum >= PAGE_INTRO_BASE && pageNum < PAGE_LEVEL_BASE)
-        return INTRO_PAGE_MS;
-    if (isPromptPage(pageNum))
-        return PROMPT_PAGE_MS;
-    if (isResultPage(pageNum))
-        return RESULT_PAGE_MS;
-    if (pageNum == PAGE_FINAL)
-        return FINAL_PAGE_MS;
-    if (pageNum == PAGE_ACCESS_RESULT)
-        return ACCESS_RESULT_PAGE_MS;
-    return 0;
-}
-
-bool isPromptPage(uint8_t pageNum)
-{
-    if (pageNum < PAGE_LEVEL_BASE || pageNum >= PAGE_FINAL)
-        return false;
-    return ((pageNum - PAGE_LEVEL_BASE) % 2) == 0;
-}
-
-bool isResultPage(uint8_t pageNum)
-{
-    if (pageNum < PAGE_LEVEL_BASE || pageNum >= PAGE_FINAL)
-        return false;
-    return ((pageNum - PAGE_LEVEL_BASE) % 2) == 1;
-}
-
-void updatePageProgress()
-{
-    if (currentPage == PAGE_START)
-        return;
-
-    if (currentPage == PAGE_LEADERBOARD)
-    {
-        if (millis() - leaderboardPageShownMillis >= LEADERBOARD_PAGE_MS && Weight < PLAYER_WEIGHT_THRESHOLD_G)
-        {
-            displayPage(PAGE_START);
-            disp_print_serial_preview();
-        }
-        return;
-    }
-
-    unsigned long duration = pageDuration(currentPage);
-    if (duration == 0)
-        return;
-
-    if (millis() - lastPageMillis >= duration)
-    {
-        uint8_t nextPage = currentPage + 1;
-        if (nextPage >= TOTAL_PAGES)
-            nextPage = PAGE_START;
-        displayPage(nextPage);
-        disp_print_serial_preview();
-    }
-}
-
-void updatePageOverlay()
-{
-    if (isPromptPage(currentPage))
-    {
-        unsigned long elapsed = millis() - lastPageMillis;
-        unsigned long remainingMs = (elapsed >= PROMPT_PAGE_MS) ? 0 : (PROMPT_PAGE_MS - elapsed);
-        unsigned long remainingSeconds = (remainingMs + 999) / 1000;
-        disp_draw_corner_label(String(remainingSeconds) + "s", color333(7, 7, 7));
-        return;
-    }
-
-    if (isResultPage(currentPage))
-    {
-        disp_draw_corner_label(String(frozenWeight) + "g", color333(0, 4, 4));
-        return;
-    }
 }
 

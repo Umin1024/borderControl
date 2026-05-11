@@ -99,49 +99,17 @@ void disp_show_page(const String& pageTag, const String& pageText, uint16_t colo
     }
 }
 
-void disp_show_leaderboard(const long scores[], uint8_t count, uint16_t color) {
-    currentPageTag = String("LEADERBOARD");
-    for (int i = 0; i < PAGE_MAX_LINES; i++) currentPageLines[i] = "";
-
-    clear();
-    textSetup(color);
-
-    dma_display->setTextSize(3);
-    dma_display->setTextWrap(false);
-    dma_display->setTextColor(color);
-    dma_display->setCursor(0, 8);
-    dma_display->print("BEST");
-
-    dma_display->setTextSize(1);
-    dma_display->setTextColor(color);
-
-    const char* labels[] = {"1.", "2.", "3."};
-    int16_t x = 42;
-    int16_t y = 4;
-    for (uint8_t i = 0; i < count && i < 3; i++) {
-        String value = (scores[i] == 0x7FFFFFFF) ? String("xxx") : String(scores[i]) + "g";
-        currentPageLines[i] = String(labels[i]) + " " + value;
-        dma_display->setCursor(x, y + i * 14);
-        dma_display->print(labels[i]);
-        dma_display->print(" ");
-        dma_display->print(value);
-    }
-}
-
-void disp_draw_corner_label(const String& label, uint16_t color) {
+void disp_debug_weight(long rawWeight) {
+    String label = String(rawWeight) + "g";
     int16_t textW = label.length() * 6;
-    int16_t x = dma_display->width() - textW - 2;
-    int16_t y = dma_display->height() - 8;
+    int16_t x     = dma_display->width()  - textW - 2;
+    int16_t y     = dma_display->height() - 8;
     dma_display->fillRect(x - 1, y, textW + 2, 8, dma_display->color565(0, 0, 0));
     dma_display->setTextSize(1);
     dma_display->setTextWrap(false);
     dma_display->setCursor(x, y);
-    dma_display->setTextColor(color);
+    dma_display->setTextColor(color333(0, 4, 4));
     dma_display->print(label);
-}
-
-void disp_debug_weight(long rawWeight) {
-    disp_draw_corner_label(String(rawWeight) + "g", color333(0, 4, 4));
 }
 
 void disp_print_serial_preview() {

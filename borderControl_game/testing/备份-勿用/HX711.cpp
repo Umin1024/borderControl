@@ -21,6 +21,22 @@ void HX711::begin()
 	Get_Maopi();
 }
 
+int HX711::Pressed(int AlarmValue)
+{
+	if (Get_Weight() >= AlarmValue && CurrentAlarm == 0)
+	{
+		CurrentAlarm = 1;
+		return 1;
+	}
+	else if (Get_Weight() < AlarmValue)
+	{
+		CurrentAlarm = 0;
+		return 0;
+	}
+
+	return 0;
+}
+
 //****************************************************
 // 获取毛皮重量
 //****************************************************
@@ -43,6 +59,12 @@ long HX711::Get_Weight()
 
 	return Weight_Shiwu;
 }
+
+//****************************************************
+// 读取HX711
+//****************************************************
+
+// ... (保留你原来的构造函数、begin、Pressed、Get_Maopi、Get_Weight 不变) ...
 
 //****************************************************
 // 读取HX711 (安全版，防 LED 干扰 + 防死机)

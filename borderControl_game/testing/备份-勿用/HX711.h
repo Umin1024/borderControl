@@ -9,6 +9,7 @@ public:
     HX711(int SCK_PIN, int DT_PIN, float GapValueIn = 44);
     long Get_Weight();
     void begin();
+    int Pressed(int AlarmValue);
 
     int HX711_SCK;
     int HX711_DT;
@@ -16,6 +17,7 @@ public:
     long HX711_Buffer;
     long Weight_Maopi;
     long Weight_Shiwu;
+    int CurrentAlarm;
 
 private:
     void Get_Maopi();

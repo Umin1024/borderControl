@@ -12,15 +12,56 @@ amaze 2026
 ---
 
 
-### 一 游戏流程 
+### 一 游戏流程与页面说明
 
-1. 玩家站到称上激活游戏（检测到大于25kg的重量开始游戏界面）
-2. 玩家站立不动，自动播放游戏介绍跟流程，每个页面停留4秒（三选一主题）
-3. 进入关卡：每关播放题目，右下角倒数10秒。
-4. 关卡结算：10秒后冻结重量，计算差值，播放结果停留4秒后，进入下一关卡。
-5. 所有关卡流程结束后，计算总分，总分界面停留10秒，如果通过游戏，亮起绿灯；如果不能通过，亮起红灯
-6. 最后进入排行榜界面
+#### 1. 总流程
+
+`START` → `INTRO 1~5` → `LEVEL 1~8`（每关 2 页：`PROMPT` + `RESULT`）→ `FINAL` → `ACCESS RESULT` → `LEADERBOARD` → `START`
+
+#### 2. 详细规则
+
+1. 等待玩家：
+显示最开始的界面：
+（第一行）BORDER CONTROL!
+（第三行）PLEASE STEP ON
+玩家站到称上激活游戏（检测到大于25kg的重量开始介绍界面INTRO）。
+2. 游戏介绍：
+玩家在称上站立不动，屏幕自动播放游戏介绍跟流程，每个页面停留4秒。
+3. 进入关卡：
+依次进入八个关卡：从第一关开始，随机三选一题目，播放题目文字，右下角显示倒数10秒。
+4. 关卡结算：
+10s倒计时结束后，冻结重量，把重量在右下角显示，计算和上一关卡重量的差值。将这个差值和题目的重量比较。显示结果页面RESULT（附上差值），结果页面停留6秒后（不显示计时），进入下一关卡。
+5. 所有关卡结束：
+八个关卡流程结束后，计算总体偏差值，final界面停留10秒。进入下一个审核页面。
+6. 审核判定：
+如果final error小于5000g则通过游戏，显示：“Access Granted.”（绿色字）并亮起绿灯；如果不能通过（大于5000g），显示“Access Denied.”(红色字)，亮起红灯。
+7. 排行榜与重置：
+最后进入排行榜界面，显示最佳的三个分数。最左侧显示BEST：右侧显示三行分数，没有最佳则用xxx替代。停留20秒并且直到等待玩家离开承重区域（小于25kg的重量），回到最开始的界面，等待新的玩家到来。
+
+#### 3. 各页面显示内容
+
+| 页面 | 显示内容 | 说明 |
+| --- | --- | --- |
+| `START` | `BORDER CONTROL`<br>`PLEASE STEP ON`<br>`THE SCALE` | 初始等待页，红字。 |
+| `INTRO 1` | `WELCOME TO THE PORT OF ENTRY` | 游戏介绍页。 |
+| `INTRO 2` | `step on scale with all your things` | 游戏介绍页。 |
+| `INTRO 3` | `do not remove anything yet` | 游戏介绍页。 |
+| `INTRO 4` | `...` | 游戏介绍页。 |
+| `INTRO 5` | `forbidden items found` | 游戏介绍页。 |
+| `LEVEL n / PROMPT` | `discard: <item>` | 每关从 3 个候选题目里随机抽 1 个；进入第一关题目页时，当前重量会作为基准值。 |
+| `LEVEL n / RESULT` | `close. off by <error>g` | 显示当前关卡误差。 |
+| `FINAL` | `final error <total>g` | 显示总误差，绿色字。 |
+| `ACCESS RESULT` | `Access Granted.` / `Access Denied.` | `final error < 5000g` 为通过，绿色字并亮绿灯；否则红字并亮红灯。 |
+| `LEADERBOARD` | 左侧大字 `BEST`，右侧三行 `1.` `2.` `3.` 分数 | 显示历史最佳 3 个分数，空位显示 `xxx`。页面停留 20 秒后回到 `START`。 |
+
+#### 4. 通过条件
+
+- 通过阈值放在 `borderControl_game/src/main/config.h` 里的 `PASS_THRESHOLD_G`。
+- 当前规则是：`final error < PASS_THRESHOLD_G` 即通过。
 ---
+
+
+
 
 ### 二 设备完整接线图（和电子器件清单）
 
@@ -51,6 +92,7 @@ GND
 
 ![分压板电路图](2e3213f481d069c567e93a28c88c5a1f.jpg)
 ![relay-light](relay-5v-1-channel-arduino.jpg)
+![HUB75](HUB75.PNG)
 ---
 
 ### 四 一些常见问题的解决方式和可能原因
@@ -69,11 +111,11 @@ GND
 - `borderControl_game\src\main\main.ino`
   - 程序入口。
   - `setup()` 负责初始化屏幕、红绿灯、HX711，并做两次 tare。
-  - `loop()` 里有两个定时器：每 `WEIGHT_INTERVAL_MS` 读一次重量；每 `PAGE_AUTO_INTERVAL_MS` 自动翻一页。
-  - `displayPage()` 是总路由，决定当前显示开始页、介绍页、题目页、结果页、总分页、排行榜页。
+  - `loop()` 里有两个主要节奏：按 `WEIGHT_INTERVAL_MS` 读取重量；按页面规则自动切页。
+  - `displayPage()` 是总路由，决定当前显示开始页、介绍页、题目页、结果页、总分页、通过/未通过页、排行榜页。
   - `calcScore()` 负责算当前关卡误差，`updateLeaderboard()` 负责更新排行榜。
 - `borderControl_game\src\main\config.h`
-  - 所有全局参数都在这里：引脚、屏幕尺寸、称的校准系数 `HX711_GAP`、页面时间、关卡数量、intro 数量、排行榜大小。
+  - 所有全局参数都在这里：引脚、屏幕尺寸、称的校准系数 `HX711_GAP`、页面时间、关卡数量、intro 数量、排行榜大小、通过阈值 `PASS_THRESHOLD_G`。
   - 想改节奏、页数、硬件参数，优先先看这个文件。
 - `borderControl_game\src\main\game_content.h / game_content.cpp`
   - 放游戏内容数据。
@@ -82,9 +124,8 @@ GND
   - 想改题目文字、物品名字、标准克重，主要改这里。
 - `borderControl_game\src\main\display.h / display.cpp`
   - 纯显示层，不做分数和流程判断。
-  - `disp_start_screen()`、`disp_intro()`、`disp_level_prompt()`、`disp_level_result()`、`disp_final()`、`disp_leaderboard()` 分别画不同页面。
+  - 负责画不同页面，以及排行榜页的专用排版。
   - 想改排版、字号、颜色、换行、文字位置，主要改这里。
-  - `textSetup()` 是大部分页面共用的文字样式入口。
 - `borderControl_game\src\main\HX711.h / HX711.cpp`
   - 称重驱动。
   - `begin()` 会记录空载基准，`Get_Weight()` 返回当前克重。
