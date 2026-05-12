@@ -24,60 +24,59 @@ const char *const INTRO_TEXTS[NUM_INTRO_PAGES] = {
 // To fill in variants: replace the TODO placeholders below.
 const Level LEVELS[NUM_LEVELS] = {
 
-    {// Level 0 — small spice
+        {// Level 0 — Home-cooked Food
      {
-         {"jar of spice", 740},
-         /* TODO */ {"jar of spice B", 800},
-         /* TODO */ {"jar of spice C", 650},
+         {"a jar of homemade spice", 740},
+         {"a bottle of pickled cabbage", 850},
+         {"a bag of dried shiitake mushrooms", 500},
      }},
 
-    {// Level 1 — kettle
+    {// Level 1 — Cultural Tools
      {
-         {"your kettle", 1200},
-         /* TODO */ {"your kettle B", 1100},
-         /* TODO */ {"your kettle C", 1300},
+         {"a kettle", 1200},
+         {"a bamboo steamer", 800},
+         {"a bag of home made dumpling skins", 500},
      }},
 
-    {// Level 2 — blanket
+    {// Level 2 — Household Items
      {
-         {"blanket", 1500},
-         /* TODO */ {"blanket B", 1400},
-         /* TODO */ {"blanket C", 1600},
+         {"a blanket", 1500},
+         {"a mosquito net", 800},
+         {"an electric blanket", 1800},
      }},
 
-    {// Level 3 — wok
+    {// Level 3 — Outdoor Cooking
      {
          {"wok", 2110},
-         /* TODO */ {"wok B", 2000},
-         /* TODO */ {"wok C", 2200},
+         {"a piece of hardtack", 2000},
+         {"a portable gas stove", 1200},
      }},
 
-    {// Level 4 — tent
+    {// Level 4 — Hippie Shelter
      {
-         {"tent", 2500},
-         /* TODO */ {"tent B", 2300},
-         /* TODO */ {"tent C", 2700},
+         {"a tent", 2500},
+         {"a sleeping bag", 1800},
+         {"a portable washing machine", 1600},
      }},
 
-    {// Level 5 — rice cooker
+    {// Level 5 — Hometown Items
      {
-         {"rice cooker", 4500},
-         /* TODO */ {"rice cooker B", 4200},
-         /* TODO */ {"rice cooker C", 4800},
+         {"a rice cooker", 3500},
+         {"a incense burner", 1500},
+         {"a Mahjong set", 3500},
      }},
 
-    {// Level 6 — blood
+    {// Level 6 — Blood
      {
-         {"400cc blood", 400},
-         /* TODO */ {"400cc blood B", 380},
-         /* TODO */ {"400cc blood C", 420},
+         {"400cc blood", 450},
+         {"500cc blood", 550},
+         {"300cc blood", 340},
      }},
 
-    {// Level 7 — organ
+    {// Level 7 — Organs
      {
-         {"kidney", 150},
-         /* TODO */ {"kidney B", 140},
-         /* TODO */ {"kidney C", 160},
+         {"a kidney", 150},
+         {"a heart", 320},
+         {"a liver", 1500},
      }},
-
 };
