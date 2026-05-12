@@ -2,19 +2,19 @@
 
 // --- UI strings ---
 const char *const TEXT_START = "BORDER CONTROL!";
-const char *const TEXT_PROMPT_PREFIX = "discard ";
-const char *const TEXT_RESULT_PREFIX = "close! \n off by: ";
-const char *const TEXT_FINAL_PREFIX = "FINAL ERROR: \n";
-const char *const TEXT_LEADERBOARD_PREFIX = "BEST: ";
+const char *const TEXT_PROMPT_PREFIX = "Please discard the following item: ";
+const char *const TEXT_RESULT_PREFIX = "The weight discarded was off by: \n";
+const char *const TEXT_FINAL_PREFIX = "Cumulative weight discrepancy so far: \n";
+const char *const TEXT_LEADERBOARD_PREFIX = "Leaderboard (top 3 scores)";
 
 // --- Intro messages (shown before levels begin) ---
 // Edit text here; count must equal NUM_INTRO_PAGES (config.h).
 const char *const INTRO_TEXTS[NUM_INTRO_PAGES] = {
-    "WELCOME TO THE GREAT NATION'S PORT OF ENTRY", // intro 0
-    "step onto the scale with your things",        // intro 1
-    "do not remove anything",                      // intro 2
-    "...",                                         // intro 3
-    "forbidden items found",                       // intro 4
+    "Welcome to the Great Nation’s Border Control!",
+    "Please step on the platform with all your belongings.",
+    "Do not remove any items until instructed.",
+    "Detecting ...",
+    "Prohibited items found! ☹",
 };
 
 // --- Level data ---
