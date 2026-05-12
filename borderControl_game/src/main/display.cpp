@@ -6,7 +6,7 @@ static constexpr int16_t PAGE_TEXT_X = 0;
 static constexpr int16_t PAGE_TEXT_Y = 0;
 static constexpr int16_t PAGE_LINE_HEIGHT = 16;
 static constexpr uint8_t PAGE_MAX_LINES = 3;
-static constexpr uint8_t PAGE_MAX_COLS = 16;
+static constexpr uint8_t PAGE_MAX_COLS = 32;  // Increased from 16 to utilize full dual-screen width (192 / 6 ≈ 32)
 
 static String currentPageTag;
 static String currentPageLines[PAGE_MAX_LINES];
@@ -109,14 +109,15 @@ void disp_show_leaderboard(const long scores[], uint8_t count, uint16_t color) {
     dma_display->setTextSize(3);
     dma_display->setTextWrap(false);
     dma_display->setTextColor(color);
-    dma_display->setCursor(0, 8);
+    // Center "BEST" title on the full dual-screen width
+    dma_display->setCursor(72, 8);  // Adjusted for dual-screen (192 total width)
     dma_display->print("BEST");
 
     dma_display->setTextSize(1);
     dma_display->setTextColor(color);
 
     const char* labels[] = {"1.", "2.", "3."};
-    int16_t x = 42;
+    int16_t x = 78;  // Adjusted for dual-screen centering
     int16_t y = 4;
     for (uint8_t i = 0; i < count && i < 3; i++) {
         String value = (scores[i] == 0x7FFFFFFF) ? String("xxx") : String(scores[i]) + "g";

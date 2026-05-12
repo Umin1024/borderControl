@@ -4,6 +4,7 @@
 #define PANEL_RES_X 96
 #define PANEL_RES_Y 48
 #define PANEL_CHAIN 2
+#define TOTAL_DISPLAY_WIDTH (PANEL_RES_X * PANEL_CHAIN)  // 192 for dual screen
 #define PIN_E       17
 #define PIN_RED     11
 #define PIN_GREEN   12
