@@ -330,7 +330,7 @@ String pageText(uint8_t pageNum)
         return String(TEXT_FINAL_PREFIX) + " " + String(player_score) + "g";
 
     if (pageNum == PAGE_ACCESS_RESULT)
-        return playerPassed() ? String("Congratulations. Your entry has been approved.") : String("Unfortunately. the weight discrepancy was too large.");
+        return playerPassed() ? String("Access Granted.") : String("Access Denied.");
 
     if (pageNum == PAGE_LEADERBOARD)
     {
