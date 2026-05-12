@@ -12,6 +12,7 @@ uint16_t color333(uint8_t r, uint8_t g, uint8_t b);
 
 void disp_show_page(const String& pageTag, const String& pageText, uint16_t color);
 void disp_show_leaderboard(const long scores[], uint8_t count, uint16_t color);
+void disp_blink_leaderboard_row(int rank, bool visible, uint16_t color);
 void disp_draw_corner_label(const String& label, uint16_t color);
 
 // Debug: raw weight overlay drawn over any page (size-1 font, bottom-right).

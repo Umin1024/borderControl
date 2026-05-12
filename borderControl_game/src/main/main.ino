@@ -21,6 +21,7 @@ bool startPlayerArmed = false;
 long player_score = 0;
 long current_score = 0;
 long leaderboard[LEADERBOARD_SIZE];
+int8_t playerLeaderboardRank = -1;  // index in leaderboard[], -1 if not ranked
 uint8_t currentPage = PAGE_START;
 uint8_t selectedQuestions[NUM_LEVELS]; // which of the 3 variants is active this run
 
@@ -29,9 +30,6 @@ void displayPage(uint8_t pageNum);
 void resetGame();
 void calcScore(unsigned long itemWeight);
 void updateLeaderboard(long score);
-String pageLabel(uint8_t pageNum);
-String pageText(uint8_t pageNum);
-uint16_t pageColor(uint8_t pageNum);
 bool playerPassed();
 unsigned long pageDuration(uint8_t pageNum);
 bool isPromptPage(uint8_t pageNum);
@@ -90,6 +88,16 @@ void loop()
             printf("[stdio] manual page preview\n");
             disp_print_serial_preview();
         }
+#if TEST_MODE
+        if (command == 'n' || command == 'N')
+        {
+            uint8_t nextPage = currentPage + 1;
+            if (nextPage >= TOTAL_PAGES) nextPage = PAGE_START;
+            printf("[TEST] advancing to page %d\n", nextPage);
+            displayPage(nextPage);
+            disp_print_serial_preview();
+        }
+#endif
     }
 
     if (millis() - lastWeightMillis >= WEIGHT_INTERVAL_MS)
@@ -109,6 +117,12 @@ void loop()
 
     if (currentPage == PAGE_START)
     {
+#if TEST_MODE
+        displayPage(PAGE_INTRO_BASE);
+        disp_print_serial_preview();
+        delay(20);
+        return;
+#else
         if (Weight < PLAYER_WEIGHT_THRESHOLD_G)
             startPlayerArmed = true;
         if (startPlayerArmed && Weight >= PLAYER_WEIGHT_THRESHOLD_G)
@@ -118,6 +132,7 @@ void loop()
             delay(20);
             return;
         }
+#endif
     }
 
     updatePageProgress();
@@ -143,14 +158,14 @@ void displayPage(uint8_t pageNum)
     {
         resetGame();
         startPlayerArmed = false;
-        disp_show_page(pageLabel(pageNum), pageText(pageNum), pageColor(pageNum));
+        disp_show_page(pageLabel(pageNum), pageText(pageNum, current_score, player_score, selectedQuestions, playerPassed()), pageColor(pageNum, playerPassed()));
         return;
     }
 
     // INTRO pages
     if (pageNum >= PAGE_INTRO_BASE && pageNum < PAGE_LEVEL_BASE)
     {
-        disp_show_page(pageLabel(pageNum), pageText(pageNum), pageColor(pageNum));
+        disp_show_page(pageLabel(pageNum), pageText(pageNum, current_score, player_score, selectedQuestions, playerPassed()), pageColor(pageNum, playerPassed()));
         return;
     }
 
@@ -172,25 +187,37 @@ void displayPage(uint8_t pageNum)
             initialWeight = Weight;
         }
 
-        disp_show_page(pageLabel(pageNum), pageText(pageNum), pageColor(pageNum));
+        disp_show_page(pageLabel(pageNum), pageText(pageNum, current_score, player_score, selectedQuestions, playerPassed()), pageColor(pageNum, playerPassed()));
         return;
     }
 
     // FINAL
     if (pageNum == PAGE_FINAL)
     {
-        disp_show_page(pageLabel(pageNum), pageText(pageNum), pageColor(pageNum));
+        disp_show_page(pageLabel(pageNum), pageText(pageNum, current_score, player_score, selectedQuestions, playerPassed()), pageColor(pageNum, playerPassed()));
         return;
     }
 
     // ACCESS RESULT
     if (pageNum == PAGE_ACCESS_RESULT)
     {
-        disp_show_page(pageLabel(pageNum), pageText(pageNum), pageColor(pageNum));
+        disp_show_page(pageLabel(pageNum), pageText(pageNum, current_score, player_score, selectedQuestions, playerPassed()), pageColor(pageNum, playerPassed()));
         if (playerPassed())
             digitalWrite(PIN_GREEN, HIGH);
         else
             digitalWrite(PIN_RED, HIGH);
+        return;
+    }
+
+    // DENIED (failure only — skip to leaderboard if player passed)
+    if (pageNum == PAGE_DENIED)
+    {
+        if (playerPassed())
+        {
+            displayPage(PAGE_LEADERBOARD);
+            return;
+        }
+        disp_show_page("DENIED", "Your entry has been denied.", color333(7, 0, 0));
         return;
     }
 
@@ -199,7 +226,11 @@ void displayPage(uint8_t pageNum)
     {
         updateLeaderboard(player_score);
         leaderboardPageShownMillis = millis();
-        disp_show_leaderboard(leaderboard, LEADERBOARD_SIZE, pageColor(pageNum));
+        playerLeaderboardRank = -1;
+        for (int i = 0; i < LEADERBOARD_SIZE; i++) {
+            if (leaderboard[i] == player_score) { playerLeaderboardRank = i; break; }
+        }
+        disp_show_leaderboard(leaderboard, LEADERBOARD_SIZE, pageColor(pageNum, playerPassed()));
         return;
     }
 }
@@ -259,94 +290,6 @@ void updateLeaderboard(long score)
     }
 }
 
-String pageLabel(uint8_t pageNum)
-{
-    if (pageNum == PAGE_START)
-        return String("START");
-
-    if (pageNum >= PAGE_INTRO_BASE && pageNum < PAGE_LEVEL_BASE)
-    {
-        return String("INTRO ") + String(pageNum - PAGE_INTRO_BASE + 1);
-    }
-
-    if (pageNum >= PAGE_LEVEL_BASE && pageNum < PAGE_FINAL)
-    {
-        uint8_t levelPage = pageNum - PAGE_LEVEL_BASE;
-        uint8_t levelIdx = levelPage / 2;
-        bool isResult = (levelPage % 2 == 1);
-        return String("LEVEL ") + String(levelIdx + 1) + (isResult ? " RESULT" : " PROMPT");
-    }
-
-    if (pageNum == PAGE_FINAL)
-        return String("FINAL");
-
-    if (pageNum == PAGE_ACCESS_RESULT)
-        return String("ACCESS RESULT");
-
-    if (pageNum == PAGE_LEADERBOARD)
-        return String("LEADERBOARD");
-
-    return String("UNKNOWN");
-}
-
-uint16_t pageColor(uint8_t pageNum)
-{
-    if (pageNum == PAGE_FINAL)
-        return color333(0, 7, 0);
-
-    if (pageNum == PAGE_ACCESS_RESULT)
-        return playerPassed() ? color333(0, 7, 0) : color333(7, 0, 0);
-
-    if (pageNum == PAGE_LEADERBOARD)
-        return color333(7, 7, 0);
-
-    return color333(7, 0, 0);
-}
-
-String pageText(uint8_t pageNum)
-{
-    if (pageNum == PAGE_START)
-        return String(TEXT_START);
-
-    if (pageNum >= PAGE_INTRO_BASE && pageNum < PAGE_LEVEL_BASE)
-    {
-        return String(INTRO_TEXTS[pageNum - PAGE_INTRO_BASE]);
-    }
-
-    if (pageNum >= PAGE_LEVEL_BASE && pageNum < PAGE_FINAL)
-    {
-        uint8_t levelPage = pageNum - PAGE_LEVEL_BASE;
-        uint8_t levelIdx = levelPage / 2;
-        bool isResult = (levelPage % 2 == 1);
-        const Question &q = LEVELS[levelIdx].questions[selectedQuestions[levelIdx]];
-
-        if (isResult)
-            return String(TEXT_RESULT_PREFIX) + " " + String(current_score) + "g";
-
-        return String(TEXT_PROMPT_PREFIX) + " " + String(q.itemName);
-    }
-
-    if (pageNum == PAGE_FINAL)
-        return String(TEXT_FINAL_PREFIX) + " " + String(player_score) + "g";
-
-    if (pageNum == PAGE_ACCESS_RESULT)
-        return playerPassed() ? String("Congratulations. Your entry has been approved.") : String("Unfortunately. the weight discrepancy was too large.");
-
-    if (pageNum == PAGE_LEADERBOARD)
-    {
-        String text = String(TEXT_LEADERBOARD_PREFIX);
-        for (uint8_t i = 0; i < LEADERBOARD_SIZE; i++)
-        {
-            text += (leaderboard[i] == 0x7FFFFFFF) ? "xxx" : String(leaderboard[i]) + "g";
-            if (i < LEADERBOARD_SIZE - 1)
-                text += " ";
-        }
-        return text;
-    }
-
-    return String();
-}
-
 bool playerPassed()
 {
     return player_score < PASS_THRESHOLD_G;
@@ -364,6 +307,8 @@ unsigned long pageDuration(uint8_t pageNum)
         return FINAL_PAGE_MS;
     if (pageNum == PAGE_ACCESS_RESULT)
         return ACCESS_RESULT_PAGE_MS;
+    if (pageNum == PAGE_DENIED)
+        return DENIED_PAGE_MS;
     return 0;
 }
 
@@ -415,15 +360,33 @@ void updatePageOverlay()
     if (isPromptPage(currentPage))
     {
         unsigned long elapsed = millis() - lastPageMillis;
-        unsigned long remainingMs = (elapsed >= PROMPT_PAGE_MS) ? 0 : (PROMPT_PAGE_MS - elapsed);
-        unsigned long remainingSeconds = (remainingMs + 999) / 1000;
-        disp_draw_corner_label(String(remainingSeconds) + "s", color333(7, 7, 7));
+        if (elapsed < PROMPT_COUNTDOWN_MS)
+        {
+            unsigned long remainingSeconds = (PROMPT_COUNTDOWN_MS - elapsed) / 1000;
+            disp_draw_corner_label(String(remainingSeconds) + "s", color333(7, 0, 0));
+        }
+        else
+        {
+            // Blink "0s" 3 times over the final 2 seconds (6 half-cycles × 333ms each)
+            unsigned long blinkElapsed = elapsed - PROMPT_COUNTDOWN_MS;
+            uint8_t halfCycle = blinkElapsed / 333;
+            bool visible = (halfCycle % 2 == 0);
+            disp_draw_corner_label("0s", visible ? color333(7, 0, 0) : color333(0, 0, 0));
+        }
         return;
     }
 
     if (isResultPage(currentPage))
     {
-        disp_draw_corner_label(String(frozenWeight) + "g", color333(0, 4, 4));
+        // disp_draw_corner_label(String(frozenWeight) + "g", color333(7, 7, 7));
+        return;
+    }
+
+    if (currentPage == PAGE_LEADERBOARD && playerLeaderboardRank >= 0)
+    {
+        bool visible = (millis() / 500) % 2 == 0;
+        disp_blink_leaderboard_row(playerLeaderboardRank, visible,
+                                   pageColor(PAGE_LEADERBOARD, playerPassed()));
         return;
     }
 }

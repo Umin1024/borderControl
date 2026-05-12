@@ -17,13 +17,20 @@
 // --- Timing ---
 #define WEIGHT_INTERVAL_MS         500
 #define INTRO_PAGE_MS             4000
-#define PROMPT_PAGE_MS           10000
+#define PROMPT_PAGE_MS           12000   // 10s countdown + 2s blink
+#define PROMPT_COUNTDOWN_MS      10000   // visible countdown portion
 #define RESULT_PAGE_MS            6000
 #define FINAL_PAGE_MS            10000
-#define ACCESS_RESULT_PAGE_MS    10000
+#define ACCESS_RESULT_PAGE_MS     6000
+#define DENIED_PAGE_MS            5000
 #define LEADERBOARD_PAGE_MS      20000
 #define DISPLAY_DEADZONE           40
 #define PLAYER_WEIGHT_THRESHOLD_G 25000UL
+
+// --- Test mode ---
+// Set to 1 to skip weight checks so you can browse all pages without the scale.
+// Serial command 'n' advances to the next page manually.
+#define TEST_MODE 0
 
 // --- Game ---
 #define PASS_THRESHOLD_G       5000
@@ -39,5 +46,6 @@
 #define PAGE_LEVEL_BASE    (PAGE_INTRO_BASE + NUM_INTRO_PAGES)
 #define PAGE_FINAL         (PAGE_LEVEL_BASE + NUM_LEVELS * 2)
 #define PAGE_ACCESS_RESULT (PAGE_FINAL + 1)
-#define PAGE_LEADERBOARD   (PAGE_ACCESS_RESULT + 1)
+#define PAGE_DENIED        (PAGE_ACCESS_RESULT + 1)  // only shown on failure
+#define PAGE_LEADERBOARD   (PAGE_DENIED + 1)
 #define TOTAL_PAGES        (PAGE_LEADERBOARD + 1)

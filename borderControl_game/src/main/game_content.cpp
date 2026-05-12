@@ -1,20 +1,21 @@
 #include "game_content.h"
+#include "display.h"
 
 // --- UI strings ---
-const char *const TEXT_START = "Please step onto the platform，with all your belongings.";
+const char *const TEXT_START = "Please step onto the platform, with all your belongings.";
 const char *const TEXT_PROMPT_PREFIX = "Please discard the following item: ";
-const char *const TEXT_RESULT_PREFIX = "The weight discarded was off by: \n";
-const char *const TEXT_FINAL_PREFIX = "Cumulative weight discrepancy so far: \n";
+const char *const TEXT_RESULT_PREFIX = "The weight discarded was off by: ";
+const char *const TEXT_FINAL_PREFIX = "Cumulative weight discrepancy so far: ";
 const char *const TEXT_LEADERBOARD_PREFIX = "Leaderboard (top 3 scores)";
 
 // --- Intro messages (shown before levels begin) ---
 // Edit text here; count must equal NUM_INTRO_PAGES (config.h).
 const char *const INTRO_TEXTS[NUM_INTRO_PAGES] = {
-    "Welcome to the Great Nation’s Border Control!",
+    "Welcome to the Great Nation's Border Control!",
     "Please step on the platform with all your belongings.",
     "Do not remove any items until instructed.",
-    "Detecting ...",
-    "Prohibited items found! ☹",
+    "\nDetecting ...",
+    "\nProhibited items found! ☹",
 };
 
 // --- Level data ---
@@ -22,6 +23,70 @@ const char *const INTRO_TEXTS[NUM_INTRO_PAGES] = {
 // At game start, one variant is randomly selected for that run.
 // To add a new level: increase NUM_LEVELS in config.h and append an entry here.
 // To fill in variants: replace the TODO placeholders below.
+// ============================================================
+// Page UI helpers
+// ============================================================
+
+String pageLabel(uint8_t pageNum) {
+    if (pageNum == PAGE_START)
+        return String("START");
+    if (pageNum >= PAGE_INTRO_BASE && pageNum < PAGE_LEVEL_BASE)
+        return String("INTRO ") + String(pageNum - PAGE_INTRO_BASE + 1);
+    if (pageNum >= PAGE_LEVEL_BASE && pageNum < PAGE_FINAL) {
+        uint8_t levelPage = pageNum - PAGE_LEVEL_BASE;
+        uint8_t levelIdx  = levelPage / 2;
+        bool isResult     = (levelPage % 2 == 1);
+        return String("LEVEL ") + String(levelIdx + 1) + (isResult ? " RESULT" : " PROMPT");
+    }
+    if (pageNum == PAGE_FINAL)        return String("FINAL");
+    if (pageNum == PAGE_ACCESS_RESULT) return String("ACCESS RESULT");
+    if (pageNum == PAGE_LEADERBOARD)  return String("LEADERBOARD");
+    return String("UNKNOWN");
+}
+
+String pageText(uint8_t pageNum, long current_score, long player_score,
+                const uint8_t selectedQuestions[], bool passed) {
+    if (pageNum == PAGE_START)
+        return String(TEXT_START);
+
+    if (pageNum >= PAGE_INTRO_BASE && pageNum < PAGE_LEVEL_BASE)
+        return String(INTRO_TEXTS[pageNum - PAGE_INTRO_BASE]);
+
+    if (pageNum >= PAGE_LEVEL_BASE && pageNum < PAGE_FINAL) {
+        uint8_t levelPage = pageNum - PAGE_LEVEL_BASE;
+        uint8_t levelIdx  = levelPage / 2;
+        bool isResult     = (levelPage % 2 == 1);
+        const Question &q = LEVELS[levelIdx].questions[selectedQuestions[levelIdx]];
+        if (isResult)
+            return String(TEXT_RESULT_PREFIX) + " <" + String(current_score) + "> g";
+        return String(TEXT_PROMPT_PREFIX) + " <" + String(q.itemName) + ">";
+    }
+
+    if (pageNum == PAGE_FINAL)
+        return String(TEXT_FINAL_PREFIX) + " <" + String(player_score) + "> g";
+
+    if (pageNum == PAGE_ACCESS_RESULT)
+        return passed
+            ? String("Congratulations. Your entry has been approved.")
+            : String("Unfortunately. the weight discrepancy was too large.");
+
+    if (pageNum == PAGE_LEADERBOARD)
+        return String(TEXT_LEADERBOARD_PREFIX);
+
+    return String();
+}
+
+uint16_t pageColor(uint8_t pageNum, bool passed) {
+    if (pageNum == PAGE_FINAL)         return color333(7, 0, 0);
+    if (pageNum == PAGE_ACCESS_RESULT) return passed ? color333(0, 7, 0) : color333(7, 0, 0);
+    if (pageNum == PAGE_LEADERBOARD)   return color333(7, 0, 0);
+    return color333(7, 0, 0);
+}
+
+// ============================================================
+// Level data
+// ============================================================
+
 const Level LEVELS[NUM_LEVELS] = {
 
         {// Level 0 — Home-cooked Food
@@ -47,7 +112,7 @@ const Level LEVELS[NUM_LEVELS] = {
 
     {// Level 3 — Outdoor Cooking
      {
-         {"wok", 2110},
+         {"a wok", 2110},
          {"a piece of hardtack", 2000},
          {"a portable gas stove", 1200},
      }},
