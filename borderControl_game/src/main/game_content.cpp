@@ -1,13 +1,14 @@
 #include "game_content.h"
 
 // --- UI strings ---
-const char *const TEXT_START = "BORDER CONTROL\nPLEASE STEP ON\nTHE SCALE";
-const char *const TEXT_PROMPT_PREFIX = "Please discard the following item:";
-const char *const TEXT_RESULT_PREFIX = "The weight discarded was off by <.";
-const char *const TEXT_FINAL_PREFIX = "final error";
-const char *const TEXT_LEADERBOARD_PREFIX = "TOP3";
+const char *const TEXT_START = "Please step onto the platform，with all your belongings.";
+const char *const TEXT_PROMPT_PREFIX = "Please discard the following item: ";
+const char *const TEXT_RESULT_PREFIX = "The weight discarded was off by: \n";
+const char *const TEXT_FINAL_PREFIX = "Cumulative weight discrepancy so far: \n";
+const char *const TEXT_LEADERBOARD_PREFIX = "Leaderboard (top 3 scores)";
 
 // --- Intro messages (shown before levels begin) ---
+// Edit text here; count must equal NUM_INTRO_PAGES (config.h).
 const char *const INTRO_TEXTS[NUM_INTRO_PAGES] = {
     "Welcome to the Great Nation’s Border Control!",
     "Please step on the platform with all your belongings.",
@@ -17,48 +18,52 @@ const char *const INTRO_TEXTS[NUM_INTRO_PAGES] = {
 };
 
 // --- Level data ---
+// Each level has QUESTIONS_PER_LEVEL (3) variants.
+// At game start, one variant is randomly selected for that run.
+// To add a new level: increase NUM_LEVELS in config.h and append an entry here.
+// To fill in variants: replace the TODO placeholders below.
 const Level LEVELS[NUM_LEVELS] = {
 
-    {// Level 0 — Home-cooked Food
+        {// Level 0 — Home-cooked Food
      {
-         {"home spice jar", 740},
-         {"pickled cabbage", 850},
-         {"dried shiitake", 500},
+         {"a jar of homemade spice", 740},
+         {"a bottle of pickled cabbage", 850},
+         {"a bag of dried shiitake mushrooms", 500},
      }},
 
     {// Level 1 — Cultural Tools
      {
-         {"kettle", 1200},
-         {"bamboo steamer", 800},
-         {"dumpling skins", 500},
+         {"a kettle", 1200},
+         {"a bamboo steamer", 800},
+         {"a bag of home made dumpling skins", 500},
      }},
 
     {// Level 2 — Household Items
      {
-         {"blanket", 1500},
-         {"mosquito net", 800},
-         {"electric blanket", 1800},
+         {"a blanket", 1500},
+         {"a mosquito net", 800},
+         {"an electric blanket", 1800},
      }},
 
     {// Level 3 — Outdoor Cooking
      {
          {"wok", 2110},
-         {"hardtack box", 2000},
-         {"gas stove", 1200},
+         {"a piece of hardtack", 2000},
+         {"a portable gas stove", 1200},
      }},
 
     {// Level 4 — Hippie Shelter
      {
-         {"tent", 2500},
-         {"sleeping bag", 1800},
-         {"wash machine", 1600},
+         {"a tent", 2500},
+         {"a sleeping bag", 1800},
+         {"a portable washing machine", 1600},
      }},
 
     {// Level 5 — Hometown Items
      {
-         {"rice cooker", 3500},
-         {"incense burner", 1500},
-         {"Mahjong set", 3500},
+         {"a rice cooker", 3500},
+         {"a incense burner", 1500},
+         {"a Mahjong set", 3500},
      }},
 
     {// Level 6 — Blood
@@ -70,9 +75,8 @@ const Level LEVELS[NUM_LEVELS] = {
 
     {// Level 7 — Organs
      {
-         {"kidney", 150},
-         {"heart", 320},
-         {"liver", 1500},
+         {"a kidney", 150},
+         {"a heart", 320},
+         {"a liver", 1500},
      }},
-
 };

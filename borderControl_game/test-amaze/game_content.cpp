@@ -1,20 +1,20 @@
 #include "game_content.h"
 
 // --- UI strings ---
-const char *const TEXT_START = "BORDER CONTROL!";
-const char *const TEXT_PROMPT_PREFIX = "Please discard the following item: ";
-const char *const TEXT_RESULT_PREFIX = "The weight discarded was off by: \n";
-const char *const TEXT_FINAL_PREFIX = "Cumulative weight discrepancy so far: \n";
-const char *const TEXT_LEADERBOARD_PREFIX = "Leaderboard (top 3 scores)";
+const char *const TEXT_START = "Please step onto the platform，with all your belongings.";
+const char *const TEXT_PROMPT_PREFIX = "\nPlease discard the following item: ";
+const char *const TEXT_RESULT_PREFIX = "\nThe weight discarded was off by: \n";
+const char *const TEXT_FINAL_PREFIX = "\nCumulative weight discrepancy so far: \n";
+const char *const TEXT_LEADERBOARD_PREFIX = "\nLeaderboard (top 3 scores)";
 
 // --- Intro messages (shown before levels begin) ---
 // Edit text here; count must equal NUM_INTRO_PAGES (config.h).
 const char *const INTRO_TEXTS[NUM_INTRO_PAGES] = {
-    "Welcome to the Great Nation’s Border Control!",
-    "Please step on the platform with all your belongings.",
-    "Do not remove any items until instructed.",
-    "Detecting ...",
-    "Prohibited items found! ☹",
+    "\n\nWelcome to the Great Nation’s Border Control!",
+    "\n\nPlease step on the platform with all your belongings.",
+    "\n\nDo not remove any items until instructed.",
+    "\n\nDetecting ...",
+    "\n\nProhibited items found! ☹",
 };
 
 // --- Level data ---
