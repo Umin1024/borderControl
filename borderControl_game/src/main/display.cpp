@@ -2,11 +2,11 @@
 #include "display.h"
 
 static constexpr uint8_t PAGE_TEXT_SIZE = 1;
-static constexpr int16_t PAGE_TEXT_X = 2;           // 2px left margin
+static constexpr int16_t PAGE_TEXT_X = 1;           // 1px left margin (avoids DMA dead column at x=48)
 static constexpr int16_t PAGE_TEXT_Y = 2;           // 2px top margin
 static constexpr int16_t PAGE_LINE_HEIGHT = 16;
 static constexpr uint8_t PAGE_MAX_LINES = 3;
-static constexpr uint8_t PAGE_MAX_COLS = 31;        // floor((192-4)/6) = 31
+static constexpr uint8_t PAGE_MAX_COLS = 31;        // floor((192-1-2)/6) = 31
 static constexpr uint8_t FIRST_LINE_INDENT = 0;
 static constexpr int16_t LEADERBOARD_ROW_H = 11;   // px between leaderboard rows
 
