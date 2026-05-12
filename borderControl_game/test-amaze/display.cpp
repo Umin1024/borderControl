@@ -13,7 +13,7 @@ static void clear() {
 
 // Default text setup used by most pages.
 // x starts at 2 to skip the leftmost dead pixel column.
-static void textSetup(uint16_t color, uint8_t size = 2, int16_t x = 2, int16_t y = 0) {
+static void textSetup(uint16_t color, uint8_t size = 1, int16_t x = 2, int16_t y = 0) {
     dma_display->setTextSize(size);
     dma_display->setTextWrap(true);
     dma_display->setCursor(x, y);
@@ -24,7 +24,7 @@ static void textSetup(uint16_t color, uint8_t size = 2, int16_t x = 2, int16_t y
 
 void disp_start_screen() {
     clear();
-    textSetup(color333(7, 0, 0), 2, 20, 16);
+    textSetup(color333(7, 0, 0), 1, 20, 16);
     dma_display->println(TEXT_START);
 }
 
