@@ -2,11 +2,11 @@
 #include "display.h"
 
 static constexpr uint8_t PAGE_TEXT_SIZE = 1;
-static constexpr int16_t PAGE_TEXT_X = 1;           // 1px left margin (avoids DMA dead column at x=48)
+static constexpr int16_t PAGE_TEXT_X = 5;           // 5px left margin (M mod 6 = 5, avoids DMA dead columns at x=48/96/144)
 static constexpr int16_t PAGE_TEXT_Y = 2;           // 2px top margin
 static constexpr int16_t PAGE_LINE_HEIGHT = 16;
 static constexpr uint8_t PAGE_MAX_LINES = 3;
-static constexpr uint8_t PAGE_MAX_COLS = 31;        // floor((192-1-2)/6) = 31
+static constexpr uint8_t PAGE_MAX_COLS = 30;        // floor((192-5-2)/6) = 30
 static constexpr uint8_t FIRST_LINE_INDENT = 0;
 static constexpr int16_t LEADERBOARD_ROW_H = 11;   // px between leaderboard rows
 
@@ -183,10 +183,10 @@ void disp_blink_leaderboard_row(int rank, bool visible, uint16_t color) {
     }
 }
 
-void disp_draw_corner_label(const String& label, uint16_t color) {
+void disp_draw_corner_label(const String& label, uint16_t color, int16_t yFromBottom) {
     int16_t textW = label.length() * 6;
     int16_t x = dma_display->width() - textW - 2;
-    int16_t y = dma_display->height() - 8;
+    int16_t y = dma_display->height() - yFromBottom;
     dma_display->fillRect(x - 1, y, textW + 2, 8, dma_display->color565(0, 0, 0));
     dma_display->setTextSize(1);
     dma_display->setTextWrap(false);

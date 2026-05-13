@@ -17,7 +17,9 @@ unsigned long lastDisplayedWeight = 0xFFFFFFFFUL;
 unsigned long initialWeight = 0;
 unsigned long frozenWeight = 0;
 unsigned long leaderboardPageShownMillis = 0;
+unsigned long lastWeightLabelMillis = 0;
 bool startPlayerArmed = false;
+bool weightFrozenThisPrompt = false;
 long player_score = 0;
 long current_score = 0;
 long leaderboard[LEADERBOARD_SIZE];
@@ -152,6 +154,7 @@ void displayPage(uint8_t pageNum)
 
     currentPage = pageNum;
     lastPageMillis = millis();
+    lastWeightLabelMillis = 0;
 
     // START
     if (pageNum == PAGE_START)
@@ -179,10 +182,13 @@ void displayPage(uint8_t pageNum)
 
         if (isResult)
         {
-            frozenWeight = Weight;
             calcScore(q.weightGrams);
         }
-        else if (levelIdx == 0)
+        else
+        {
+            weightFrozenThisPrompt = false;
+        }
+        if (!isResult && levelIdx == 0)
         {
             initialWeight = Weight;
         }
@@ -357,37 +363,53 @@ void updatePageProgress()
 
 void updatePageOverlay()
 {
+    bool showWeight = (currentPage != PAGE_START);
+
+    // Countdown (prompt pages) — elevated 10px when real-time weight is also shown
     if (isPromptPage(currentPage))
     {
+        int16_t countdownY = showWeight ? 18 : 8;
         unsigned long elapsed = millis() - lastPageMillis;
         if (elapsed < PROMPT_COUNTDOWN_MS)
         {
             unsigned long remainingSeconds = (PROMPT_COUNTDOWN_MS - elapsed) / 1000;
-            disp_draw_corner_label(String(remainingSeconds) + "s", color333(7, 0, 0));
+            disp_draw_corner_label(String(remainingSeconds) + "s", color333(7, 7, 7), countdownY);
         }
         else
         {
+            if (!weightFrozenThisPrompt)
+            {
+                frozenWeight = Weight;
+                weightFrozenThisPrompt = true;
+            }
             // Blink "0s" 3 times over the final 2 seconds (6 half-cycles × 333ms each)
             unsigned long blinkElapsed = elapsed - PROMPT_COUNTDOWN_MS;
             uint8_t halfCycle = blinkElapsed / 333;
             bool visible = (halfCycle % 2 == 0);
-            disp_draw_corner_label("0s", visible ? color333(7, 0, 0) : color333(0, 0, 0));
+            disp_draw_corner_label("0s", visible ? color333(7, 7, 7) : color333(0, 0, 0), countdownY);
         }
-        return;
     }
 
-    if (isResultPage(currentPage))
-    {
-        // disp_draw_corner_label(String(frozenWeight) + "g", color333(7, 7, 7));
-        return;
-    }
-
+    // Leaderboard row blink
     if (currentPage == PAGE_LEADERBOARD && playerLeaderboardRank >= 0)
     {
         bool visible = (millis() / 500) % 2 == 0;
         disp_blink_leaderboard_row(playerLeaderboardRank, visible,
                                    pageColor(PAGE_LEADERBOARD, playerPassed()));
-        return;
+    }
+
+    // Real-time weight — all pages except START, fixed 7-char area (6 digits + "g"),
+    // refreshed 3x per 2s (667ms) to avoid unnecessary fillRect churn.
+    // During prompt-page blink phase, show frozen value instead of live weight.
+    if (showWeight && millis() - lastWeightLabelMillis >= 667)
+    {
+        lastWeightLabelMillis = millis();
+        unsigned long displayWeight = weightFrozenThisPrompt ? frozenWeight : Weight;
+        if (displayWeight < DISPLAY_WEIGHT_MIN_G) displayWeight = 0;
+        String wStr = String(displayWeight);
+        while ((int)wStr.length() < 6) wStr = " " + wStr;  // right-align in 6-char field
+        wStr += "g";                                         // always 7 chars = 42px wide
+        disp_draw_corner_label(wStr, color333(7, 7, 0));
     }
 }
 

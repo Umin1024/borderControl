@@ -6,7 +6,7 @@
 class HX711
 {
 public:
-    HX711(int SCK_PIN, int DT_PIN, float GapValueIn = 44);
+    HX711(int SCK_PIN, int DT_PIN, float GapValueIn = 20);
     long Get_Weight();
     void begin();
 

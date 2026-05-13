@@ -12,7 +12,7 @@
 // --- Sensor ---
 #define HX711_SCK        13
 #define HX711_DT         14
-#define HX711_GAP        9.65f   // calibration: smaller = lighter, larger = heavier
+#define HX711_GAP        20.1f   // calibration: smaller = lighter, larger = heavier
 
 // --- Timing ---
 #define WEIGHT_INTERVAL_MS         500
@@ -25,12 +25,13 @@
 #define DENIED_PAGE_MS            5000
 #define LEADERBOARD_PAGE_MS      20000
 #define DISPLAY_DEADZONE           40
+#define DISPLAY_WEIGHT_MIN_G      500   // weights below this show as 0 on screen
 #define PLAYER_WEIGHT_THRESHOLD_G 25000UL
 
 // --- Test mode ---
 // Set to 1 to skip weight checks so you can browse all pages without the scale.
 // Serial command 'n' advances to the next page manually.
-#define TEST_MODE 0
+#define TEST_MODE 1
 
 // --- Game ---
 #define PASS_THRESHOLD_G       5000

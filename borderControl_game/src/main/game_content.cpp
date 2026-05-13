@@ -27,35 +27,42 @@ const char *const INTRO_TEXTS[NUM_INTRO_PAGES] = {
 // Page UI helpers
 // ============================================================
 
-String pageLabel(uint8_t pageNum) {
+String pageLabel(uint8_t pageNum)
+{
     if (pageNum == PAGE_START)
         return String("START");
     if (pageNum >= PAGE_INTRO_BASE && pageNum < PAGE_LEVEL_BASE)
         return String("INTRO ") + String(pageNum - PAGE_INTRO_BASE + 1);
-    if (pageNum >= PAGE_LEVEL_BASE && pageNum < PAGE_FINAL) {
+    if (pageNum >= PAGE_LEVEL_BASE && pageNum < PAGE_FINAL)
+    {
         uint8_t levelPage = pageNum - PAGE_LEVEL_BASE;
-        uint8_t levelIdx  = levelPage / 2;
-        bool isResult     = (levelPage % 2 == 1);
+        uint8_t levelIdx = levelPage / 2;
+        bool isResult = (levelPage % 2 == 1);
         return String("LEVEL ") + String(levelIdx + 1) + (isResult ? " RESULT" : " PROMPT");
     }
-    if (pageNum == PAGE_FINAL)        return String("FINAL");
-    if (pageNum == PAGE_ACCESS_RESULT) return String("ACCESS RESULT");
-    if (pageNum == PAGE_LEADERBOARD)  return String("LEADERBOARD");
+    if (pageNum == PAGE_FINAL)
+        return String("FINAL");
+    if (pageNum == PAGE_ACCESS_RESULT)
+        return String("ACCESS RESULT");
+    if (pageNum == PAGE_LEADERBOARD)
+        return String("LEADERBOARD");
     return String("UNKNOWN");
 }
 
 String pageText(uint8_t pageNum, long current_score, long player_score,
-                const uint8_t selectedQuestions[], bool passed) {
+                const uint8_t selectedQuestions[], bool passed)
+{
     if (pageNum == PAGE_START)
         return String(TEXT_START);
 
     if (pageNum >= PAGE_INTRO_BASE && pageNum < PAGE_LEVEL_BASE)
         return String(INTRO_TEXTS[pageNum - PAGE_INTRO_BASE]);
 
-    if (pageNum >= PAGE_LEVEL_BASE && pageNum < PAGE_FINAL) {
+    if (pageNum >= PAGE_LEVEL_BASE && pageNum < PAGE_FINAL)
+    {
         uint8_t levelPage = pageNum - PAGE_LEVEL_BASE;
-        uint8_t levelIdx  = levelPage / 2;
-        bool isResult     = (levelPage % 2 == 1);
+        uint8_t levelIdx = levelPage / 2;
+        bool isResult = (levelPage % 2 == 1);
         const Question &q = LEVELS[levelIdx].questions[selectedQuestions[levelIdx]];
         if (isResult)
             return String(TEXT_RESULT_PREFIX) + " <" + String(current_score) + "> g";
@@ -67,8 +74,8 @@ String pageText(uint8_t pageNum, long current_score, long player_score,
 
     if (pageNum == PAGE_ACCESS_RESULT)
         return passed
-            ? String("Congratulations. Your entry has been approved.")
-            : String("Unfortunately. the weight discrepancy was too large.");
+                   ? String("Congratulations. Your entry has been approved.")
+                   : String("Unfortunately. the weight discrepancy was too large.");
 
     if (pageNum == PAGE_LEADERBOARD)
         return String(TEXT_LEADERBOARD_PREFIX);
@@ -76,10 +83,14 @@ String pageText(uint8_t pageNum, long current_score, long player_score,
     return String();
 }
 
-uint16_t pageColor(uint8_t pageNum, bool passed) {
-    if (pageNum == PAGE_FINAL)         return color333(7, 0, 0);
-    if (pageNum == PAGE_ACCESS_RESULT) return passed ? color333(0, 7, 0) : color333(7, 0, 0);
-    if (pageNum == PAGE_LEADERBOARD)   return color333(7, 0, 0);
+uint16_t pageColor(uint8_t pageNum, bool passed)
+{
+    if (pageNum == PAGE_FINAL)
+        return color333(7, 0, 0);
+    if (pageNum == PAGE_ACCESS_RESULT)
+        return passed ? color333(0, 7, 0) : color333(7, 0, 0);
+    if (pageNum == PAGE_LEADERBOARD)
+        return color333(7, 0, 0);
     return color333(7, 0, 0);
 }
 
@@ -89,59 +100,59 @@ uint16_t pageColor(uint8_t pageNum, bool passed) {
 
 const Level LEVELS[NUM_LEVELS] = {
 
-        {// Level 0 — Home-cooked Food
+    {// Level 0 — Home-cooked Food
      {
-         {"a jar of homemade spice", 740},
+         {"a jar of homemade spice", 200},
          {"a bottle of pickled cabbage", 850},
-         {"a bag of dried shiitake mushrooms", 500},
+         {"a bag of dried shiitake mushrooms", 296},
      }},
 
     {// Level 1 — Cultural Tools
      {
          {"a kettle", 1200},
-         {"a bamboo steamer", 800},
-         {"a bag of home made dumpling skins", 500},
+         {"a bamboo steamer", 294},
+         {"a plushie", 531},
      }},
 
     {// Level 2 — Household Items
      {
-         {"a blanket", 1500},
-         {"a mosquito net", 800},
-         {"an electric blanket", 1800},
+         {"a blanket", 1100},
+         {"a mosquito net", 698},
+         {"an electric blanket", 1756},
      }},
 
     {// Level 3 — Outdoor Cooking
      {
          {"a wok", 2110},
-         {"a piece of hardtack", 2000},
-         {"a portable gas stove", 1200},
+         {"a piece of hardtack", 78},
+         {"a portable gas stove", 3260},
      }},
 
     {// Level 4 — Hippie Shelter
      {
-         {"a tent", 2500},
-         {"a sleeping bag", 1800},
-         {"a portable washing machine", 1600},
+         {"a tent", 2670},
+         {"a sleeping bag", 1840},
+         {"a portable washing machine", 1992},
      }},
 
     {// Level 5 — Hometown Items
      {
-         {"a rice cooker", 3500},
-         {"a incense burner", 1500},
-         {"a Mahjong set", 3500},
+         {"a rice cooker", 4521},
+         {"an incense burner", 1500},
+         {"a Mahjong set", 4113},
      }},
 
     {// Level 6 — Blood
      {
-         {"400cc blood", 450},
-         {"500cc blood", 550},
-         {"300cc blood", 340},
+         {"400cc of blood", 410},
+         {"500cc of blood", 520},
+         {"300cc of blood", 310},
      }},
 
     {// Level 7 — Organs
      {
-         {"a kidney", 150},
-         {"a heart", 320},
-         {"a liver", 1500},
+         {"a kidney", 158},
+         {"a heart", 397},
+         {"a liver", 1521},
      }},
 };
